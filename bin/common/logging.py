@@ -1,16 +1,24 @@
 import logging
 import logging.handlers
 import sys
+import os
 
 
 O_LOGGER = None
 B_ACTIVATE_DEBUG = False
 
 def get_log_file_fp(s_suffixe='.log', s_file='other'):
-    s_ret = "/var/log/infradmin"
+    s_ret = "/var/log/app"
     s_ret += "/" + s_file
     s_ret += s_suffixe
     return s_ret
+
+def create_log_directory_fp():
+    try: 
+        os.makedirs("/var/log/app", exist_ok = True) 
+        print("Directory '%s' created successfully") 
+    except OSError as error: 
+        print("Directory '%s' can not be created") 
 
 def init_logging(s_conf_file_name='other', b_debug=False):
     """
@@ -39,6 +47,8 @@ def init_logging(s_conf_file_name='other', b_debug=False):
     #
     formatter_info = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
     formatter_debug = logging.Formatter('%(asctime)s :: %(levelname)s :: %(message)s')
+    #
+    create_log_directory_fp()
     #
     s_fp_log_error = get_log_file_fp('.error.log', s_conf_file_name)
     print("#  error log : " + s_fp_log_error)

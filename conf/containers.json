@@ -1,0 +1,6 @@
+{
+    "container_name" : {
+        "volumes" : ["/volume1/path","/volume2/path"],
+        "is_bdd" : "yes"
+    }
+}
