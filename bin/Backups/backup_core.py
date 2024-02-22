@@ -1,13 +1,19 @@
+import datetime
 import json
+import string
+
+from bin.Backups import rotatebackups
+
 
 class IncrementalBackup:
 
-    def __init__(self, name="backup", server=None, keep=90, store=None,
-                 config_file=None, user="root"):
+    def __init__(self, s_bck_name="backup", i_keep=90):
         with open("/usr/src/app/infradmin/conf", 'r') as fp:
             self.d_json_conf = json.load(fp)
+        self.s_bck_name = s_bck_name
+        self.i_keep = i_keep
+        self.s_bck_path = "/usr/src/app/infradmin/bck"
         #self.server = server
-        #self.keep = keep
         #self.config_file = config_file
         #self.store = store
         #self.user = user
@@ -21,16 +27,17 @@ class IncrementalBackup:
     def backup(self):
 
         # rotate the backups
-        rotater = rotatebackups.RotateBackups(self.keep, self.store)
+        rotater = rotatebackups.RotateBackups(self.i_keep, self.s_bck_path)
         rotated_names = rotater.rotate_backups()
 
         rsync_to = None
         if not rotated_names:
             # get the current date and timestamp and the zero backup name
             now = datetime.datetime.now()
-            padding = len(str(self.keep))
+            padding = len(str(self.i_keep))
             tstamp = now.strftime("%Y%m%d%H%M%S")
-            zbackup_name = string.join(["".zfill(padding), tstamp, self.name], ".")
+            zbackup_name = string.join(["".zfill(padding), tstamp, self.s_bck_name], ".")
+
             rsync_to = self.store + os.sep + zbackup_name
         else:
             rsync_to = rotated_names[0]
@@ -39,25 +46,16 @@ class IncrementalBackup:
         rsync_base = ["rsync", "-avR", "--ignore-errors", "--delete", "--delete-excluded"]
 
         # get the paths to backup either from the command line or from a paths file
-        bpaths = []
+        l_backup_path = []
         expaths = []
-        if self.config_file:
 
-            pf = open(self.config_file, "r")
-            config = json.load(pf)
-            pf.close()
+        o_conf_file = open(self.config_file, "r")
+        d_config = json.load(o_conf_file)
+        o_conf_file.close()
 
+        for d_container in d_config:
             # add the paths to backup
-            bpaths.extend(config["backup"])
-
-            # add and filter/exclude options
-            if "exclude" in config:
-                for exclude in config["exclude"]:
-                    rsync_base.extend(["--exclude", exclude])
-
-            if "port" in config:
-                for thePort in config["port"]:
-                    rsync_base.extend(["-e", thePort])
+            l_backup_path.extend(d_container["volumes"].values())
 
         # one rsync command per path, ignore files vanished errors
         for bpath in bpaths:
