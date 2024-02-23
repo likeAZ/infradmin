@@ -1,5 +1,4 @@
 import json
-
 import yaml
 import os
 import docker
@@ -25,6 +24,9 @@ class Compose:
         with open(self.s_json_conf_fp, 'w') as json_file:
             json.dump(d_json, json_file)
         json_file.close()
+
+    def is_bdd(self):
+        #//TODO
 
     def get_containers_name(self):
         l_container_name = []

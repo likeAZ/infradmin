@@ -1,172 +1,60 @@
 import datetime
 import json
 import string
+import subprocess
+import os
+import tarfile
 
-from bin.Backups import rotatebackups
 
+class Backup:
 
-class IncrementalBackup:
-
-    def __init__(self, s_bck_name="backup", i_keep=90):
-        with open("/usr/src/app/infradmin/conf", 'r') as fp:
+    def __init__(self, s_bck_name="backup", i_keep=90, s_server='192.168.1.9', s_user='hugo', s_destination_path='/'):
+        with open("/usr/src/app/infradmin/conf/containers.json", 'r') as fp:
             self.d_json_conf = json.load(fp)
+        fp.close()
         self.s_bck_name = s_bck_name
         self.i_keep = i_keep
-        self.s_bck_path = "/usr/src/app/infradmin/bck"
-        #self.server = server
-        #self.config_file = config_file
-        #self.store = store
-        #self.user = user
+        self.s_bck_path = "/usr/src/app/infradmin/backup/"
+        self.s_source_data = "/usr/src/app/infradmin/data/"
+        self.s_server = s_server
+        self.s_user = s_user
+        self.s_destination_path = s_destination_path
+        self.s_date_format = "%Y%m%d%H%M%S"
+        self.o_now = datetime.datetime.now()
 
-    def run_command(self, command=None, shell=False, ignore_errors=False,
-                    ignore_codes=None):
+    def run_command(self, command=None):
         result = subprocess.call(command, shell=False)
-        if result and not ignore_errors and (not ignore_codes or result in set(ignore_codes)):
-            raise BaseException(str(command) + " " + str(result))
 
     def backup(self):
+        l_backups_fp = []
+        for s_dir_to_backup in os.listdir(self.s_source_data):
+            s_dir_to_backup_fp = self.s_source_data + s_dir_to_backup
+            l_backups_fp.append(s_dir_to_backup_fp)
 
-        # rotate the backups
-        rotater = rotatebackups.RotateBackups(self.i_keep, self.s_bck_path)
-        rotated_names = rotater.rotate_backups()
+        s_timestamp = self.o_now.strftime(self.s_date_format)
+        s_backup_filename = s_timestamp + "-mars_backup.tar.gz"
+        o_tgz_file = tarfile.open(self.s_bck_path + s_backup_filename, 'w:gz')
+        for s_dir_fp in l_backups_fp:
+            o_tgz_file.add(s_dir_fp)
+        o_tgz_file.close()
 
-        rsync_to = None
-        if not rotated_names:
-            # get the current date and timestamp and the zero backup name
-            now = datetime.datetime.now()
-            padding = len(str(self.i_keep))
-            tstamp = now.strftime("%Y%m%d%H%M%S")
-            zbackup_name = string.join(["".zfill(padding), tstamp, self.s_bck_name], ".")
 
-            rsync_to = self.store + os.sep + zbackup_name
-        else:
-            rsync_to = rotated_names[0]
+    def rotate(self):
 
-        # create the base rsync command with excludes
-        rsync_base = ["rsync", "-avR", "--ignore-errors", "--delete", "--delete-excluded"]
+        for s_dir_backup in os.listdir(self.s_bck_path):
+            s_date_backup = s_dir_backup
+            o_date_backup = datetime.datetime.strptime(s_date_backup, __format=self.s_date_format)
+            i_date_delta = int((self.o_now - o_date_backup).days)
+            if i_date_delta >= self.i_keep:
+                os.remove(self.s_bck_path + s_dir_backup)
 
-        # get the paths to backup either from the command line or from a paths file
-        l_backup_path = []
-        expaths = []
 
-        o_conf_file = open(self.config_file, "r")
-        d_config = json.load(o_conf_file)
-        o_conf_file.close()
 
-        for d_container in d_config:
-            # add the paths to backup
-            l_backup_path.extend(d_container["volumes"].values())
-
+    def push_backups(self):
+        l_backups_path = []
         # one rsync command per path, ignore files vanished errors
-        for bpath in bpaths:
-            bpath = bpath.strip()
-            rsync_cmd = rsync_base[:]
-            if self.server:
-                bpath = self.user + "@" + self.server + ":" + bpath
-            rsync_cmd.append(bpath)
-            rsync_cmd.append(rsync_to)
-            logging.debug(rsync_cmd)
-            self.run_command(command=rsync_cmd, ignore_errors=True)
-
-
-"""
-Prints out the usage for the command line.
-"""
-
-
-def usage():
-    usage = ["incrbackup.py [-hnksctu]\n"]
-    usage.append("  [-h | --help] prints this help and usage message\n")
-    usage.append("  [-n | --name] backup namespace\n")
-    usage.append("  [-k | --keep] number of backups to keep before deleting\n")
-    usage.append("  [-s | --server] the server to backup, if remote\n")
-    usage.append("  [-c | --config] configuration file with backup paths\n")
-    usage.append("  [-t | --store] directory locally to store the backups\n")
-    usage.append("  [-u | --user] the remote username used to ssh for backups\n")
-    message = string.join(usage)
-    print
-    message
-
-
-"""
-Main method that starts up the backup.  
-"""
-
-
-def main(argv):
-    # set the default values
-    pid_file = tempfile.gettempdir() + os.sep + "incrbackup.pid"
-    name = "backup"
-    keep = 90
-    server = None
-    config_file = None
-    store = None
-    user = "backup"
-
-    try:
-
-        # process the command line options
-        opts, args = getopt.getopt(argv, "hn:k:s:c:t:u:", ["help", "name=",
-                                                           "keep=", "server=", "config=", "store=", "user="])
-
-        # if no arguments print usage
-        if len(argv) == 0:
-            usage()
-            sys.exit()
-
-            # loop through all of the command line options and set the appropriate
-        # values, overriding defaults
-        for opt, arg in opts:
-            if opt in ("-h", "--help"):
-                usage()
-                sys.exit()
-            elif opt in ("-n", "--name"):
-                name = arg
-            elif opt in ("-k", "--keep"):
-                keep = int(arg)
-            elif opt in ("-s", "--server"):
-                server = arg
-            elif opt in ("-c", "--config"):
-                config_file = arg
-            elif opt in ("-t", "--store"):
-                store = arg
-            elif opt in ("-u", "--user"):
-                user = arg
-
-    except getopt.GetoptError, msg:
-        # if an error happens print the usage and exit with an error
-        usage()
-        sys.exit(errno.EIO)
-
-    # check options are set correctly
-    if config_file == None or store == None:
-        usage()
-        sys.exit(errno.EPERM)
-
-    # process backup, catch any errors, and perform cleanup
-    try:
-
-        # another backup can't already be running, if pid file doesn't exist, then
-        # create it
-        if os.path.exists(pid_file):
-            logging.warning("Backup running, %s pid exists, exiting." % pid_file)
-            sys.exit(errno.EBUSY)
-        else:
-            pid = str(os.getpid())
-            f = open(pid_file, "w")
-            f.write("%s\n" % pid)
-            f.close()
-
-        # create the backup object and call its backup method
-        ibackup = IncrementalBackup(name, server, keep, store, config_file, user)
-        ibackup.backup()
-
-    except(Exception):
-        logging.exception("Incremental backup failed.")
-    finally:
-        os.remove(pid_file)
-
-
-# if we are running the script from the command line, run the main function
-if __name__ == "__main__":
-    main(sys.argv[1:])
+        for s_backup_path in l_backups_path:
+            s_backup_path = s_backup_path.strip()
+            s_rsync_cmd = "rsync -av " + s_backup_path + self.s_user + "@" + self.s_server + "::" + self.s_destination_path
+            logging.debug(s_rsync_cmd)
+            self.run_command(command=s_rsync_cmd, ignore_errors=True)
