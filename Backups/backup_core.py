@@ -49,7 +49,7 @@ class Backup:
         for s_dir_to_exclude in self.l_exclude:
             self.o_logger.info("deleting " + s_dir_to_exclude + " in the backup list")
             for s_file_to_backup_fp in l_files_to_backup_fp_tmp:
-                if s_dir_to_exclude not in s_file_to_backup_fp:
+                if not s_file_to_backup_fp.startswith(s_dir_to_exclude):
                     self.o_logger.info("adding " + s_file_to_backup_fp + " in the backup list")
                     self.l_files_to_backup_fp.append(s_file_to_backup_fp)
 
