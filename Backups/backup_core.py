@@ -48,11 +48,8 @@ class Backup:
                 l_files_to_backup_fp_tmp.append(s_file_to_backup_fp)
         for s_dir_to_exclude in self.l_exclude:
             self.o_logger.info("deleting " + s_dir_to_exclude + " in the backup list")
-            for s_file_to_backup_fp in l_files_to_backup_fp_tmp:
-                if not s_file_to_backup_fp.startswith(s_dir_to_exclude):
-                    self.o_logger.info("adding " + s_file_to_backup_fp + " in the backup list")
-                    self.l_files_to_backup_fp.append(s_file_to_backup_fp)
-
+            l_files_to_backup_fp_tmp = [file_path for file_path in l_files_to_backup_fp_tmp if not file_path.startswith(s_dir_to_exclude)]
+        self.l_files_to_backup_fp = l_files_to_backup_fp_tmp
         s_timestamp = self.o_now.strftime(self.s_date_format)
         s_backup_filename = s_timestamp + "-mars_backup.tar.gz"
         self.o_logger.info("backup name will be : " + s_backup_filename)
