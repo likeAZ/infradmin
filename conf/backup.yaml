@@ -1,0 +1,5 @@
+exclude:
+  - "/usr/src/app/infradmin/backup/"
+  - "/data/elasticsearch/data"
+  - "/data/freshrss/database"
+  - "/data/jellyfin/media"

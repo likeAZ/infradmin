@@ -8,4 +8,5 @@ RUN mkdir "conf" "backup"
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY bin/* ./
+COPY conf/ conf/
 CMD [ "python", "./main.py" ]
