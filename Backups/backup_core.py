@@ -34,7 +34,9 @@ class Backup:
             o_yaml = yaml.safe_load(o_yaml_conf_file)
         self.l_exclude = o_yaml['exclude']
         o_yaml_conf_file.close()
-        self.o_logger.info("exclude list is " + self.l_exclude)
+        self.o_logger.info("exclude list is :")
+        for s_exclude_dir in self.l_exclude:
+            self.o_logger.info(s_exclude_dir)
 
     def backup(self):
         self.o_logger.info("starting backup...")
