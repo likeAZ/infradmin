@@ -1,9 +1,9 @@
 import datetime
-import json
 import yaml
 import subprocess
 import os
 import tarfile
+import bin.common.logging
 
 
 class Backup:
@@ -23,17 +23,21 @@ class Backup:
         self.o_now = datetime.datetime.now()
         self.l_dirs_to_backup_fp = []
         self.l_exclude = []
+        self.o_logger = bin.common.logging.O_LOGGER
 
     def run_command(self, command=None):
         result = subprocess.call(command, shell=False)
 
     def get_list_dirs_to_exclude(self):
+        self.o_logger.info("getting exclude list")
         with open(self.s_exclude_conf) as o_yaml_conf_file:
             o_yaml = yaml.safe_load(o_yaml_conf_file)
         self.l_exclude = o_yaml['exclude']
         o_yaml_conf_file.close()
+        self.o_logger.info("exclude list is " + self.l_exclude)
 
     def backup(self):
+        self.o_logger.info("starting backup...")
         self.get_list_dirs_to_exclude()
         for s_dir_to_backup in os.listdir(self.s_source_data):
             for s_dir_to_exclude in self.l_exclude:
@@ -43,15 +47,17 @@ class Backup:
 
         s_timestamp = self.o_now.strftime(self.s_date_format)
         s_backup_filename = s_timestamp + "-mars_backup.tar.gz"
+        self.o_logger.info("backup name will be : " + s_backup_filename)
         o_tgz_file = tarfile.open(self.s_bck_path + s_backup_filename, 'w:gz')
         for s_dir_fp in self.l_dirs_to_backup_fp:
+            self.o_logger.info("backuping : " + s_dir_fp)
             o_tgz_file.add(s_dir_fp)
         o_tgz_file.close()
         self.rotate()
         self.push_backups()
 
     def rotate(self):
-
+        self.o_logger.info("deleting files older than : " + str(self.i_keep))
         for s_dir_backup in os.listdir(self.s_bck_path):
             s_date_backup = s_dir_backup
             o_date_backup = datetime.datetime.strptime(s_date_backup, __format=self.s_date_format)
@@ -61,10 +67,12 @@ class Backup:
 
     def push_backups(self):
         # one rsync command per path, ignore files vanished errors
+        self.o_logger.info("pushing backups..")
         for s_backup_path in os.listdir(self.s_bck_path):
             s_backup_path = s_backup_path.strip()
             s_backup_path_fp = self.s_bck_path + s_backup_path
+            self.o_logger.info("pushing : " + s_backup_path_fp + " to " + self.s_destination_path)
             #s_rsync_cmd = "rsync -av " + s_backup_path_fp + self.s_user + "@" + self.s_server + "::" + self.s_destination_path
             s_rsync_cmd = "rsync -av " + s_backup_path_fp + " " + self.s_destination_path
-            logging.debug(s_rsync_cmd)
+            self.o_logger.info("with command : " + s_rsync_cmd)
             self.run_command(command=s_rsync_cmd, ignore_errors=True)

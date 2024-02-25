@@ -1,5 +1,6 @@
 exclude:
   - "/usr/src/app/infradmin/backup/"
-  - "/data/elasticsearch/data"
-  - "/data/freshrss/database"
-  - "/data/jellyfin/media"
+  - "/usr/src/app/infradmin/data/elasticsearch/data"
+  - "/usr/src/app/infradmin/data/freshrss/database"
+  - "/usr/src/app/infradmin/data/jellyfin/media"
+  - "/usr/src/app/infradmin/data/fireshare/videos"
