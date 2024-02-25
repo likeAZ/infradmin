@@ -40,17 +40,18 @@ class Backup:
 
     def backup(self):
         self.o_logger.info("starting backup...")
+        l_files_to_backup_fp_tmp = []
         self.get_list_dirs_to_exclude()
         for s_dir_path, l_subdirectories, l_files in os.walk(self.s_source_data):
             for s_file in l_files:
                 s_file_to_backup_fp = os.path.join(s_dir_path, s_file)
-                self.o_logger.info("adding " + s_file_to_backup_fp + " in the backup list")
-                self.l_files_to_backup_fp.append(s_file_to_backup_fp)
+                l_files_to_backup_fp_tmp.append(s_file_to_backup_fp)
         for s_dir_to_exclude in self.l_exclude:
-            for s_file_to_backup in self.l_files_to_backup_fp:
-                if s_dir_to_exclude in s_file_to_backup:
-                    self.o_logger.info("deleting " + s_file_to_backup + " in the backup list")
-                    self.l_files_to_backup_fp.remove(s_file_to_backup)
+            self.o_logger.info("deleting " + s_dir_to_exclude + " in the backup list")
+            for s_file_to_backup_fp in l_files_to_backup_fp_tmp:
+                if s_dir_to_exclude not in s_file_to_backup_fp:
+                    self.o_logger.info("adding " + s_file_to_backup_fp + " in the backup list")
+                    self.l_files_to_backup_fp.append(s_file_to_backup_fp)
 
         s_timestamp = self.o_now.strftime(self.s_date_format)
         s_backup_filename = s_timestamp + "-mars_backup.tar.gz"
