@@ -7,6 +7,6 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir "conf" "backup"
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-COPY bin/ .
+COPY . .
 COPY conf/ conf/
 CMD [ "python", "./main.py" ]

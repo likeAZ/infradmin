@@ -1,5 +1,5 @@
 import requests
-import common.logging
+import common.infradmin_logs
 
 def curl(methode, host, urlPath, data):
     """ construction du curl """

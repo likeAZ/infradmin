@@ -1,5 +1,5 @@
 # coding: utf-8
-import common.logging
+import common.infradmin_logs
 from Backups import backup_core
 """
 Lanceur 
@@ -7,8 +7,8 @@ Lanceur
 
 def main():
     """    Main function   """
-    common.logging.O_LOGGER = common.logging.init_logging('Backup', False)
-    common.logging.O_LOGGER.info('Lancement du backup')
+    common.infradmin_logs.O_LOGGER = common.infradmin_logs.init_logging('Backup', False)
+    common.infradmin_logs.O_LOGGER.info('Lancement du backup')
     o_backup = backup_core.Backup(90, s_destination_path="/mnt/nas")
     o_backup.backup()
 

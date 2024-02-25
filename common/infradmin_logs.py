@@ -7,11 +7,13 @@ import os
 O_LOGGER = None
 B_ACTIVATE_DEBUG = False
 
+
 def get_log_file_fp(s_suffixe='.log', s_file='other'):
     s_ret = "/var/log/app"
     s_ret += "/" + s_file
     s_ret += s_suffixe
     return s_ret
+
 
 def create_log_directory_fp():
     try: 
@@ -19,6 +21,7 @@ def create_log_directory_fp():
         print("Directory '%s' created successfully") 
     except OSError as error: 
         print("Directory '%s' can not be created") 
+
 
 def init_logging(s_conf_file_name='other', b_debug=False):
     """
@@ -52,14 +55,14 @@ def init_logging(s_conf_file_name='other', b_debug=False):
     #
     s_fp_log_error = get_log_file_fp('.error.log', s_conf_file_name)
     print("#  error log : " + s_fp_log_error)
-    file_handler_error = logging.handlers.RotatingFileHandler(s_fp_log_error, mode="a", maxBytes=100*1024*1024, backupCount=3, encoding="utf-8")
+    file_handler_error = logging.handlers.RotatingFileHandler(s_fp_log_error, mode="a", maxBytes=100 * 1024 * 1024, backupCount=3, encoding="utf-8")
     file_handler_error.setLevel(logging.WARNING)
     file_handler_error.setFormatter(formatter_info)
     o_logger.addHandler(file_handler_error)
     #
     s_fp_log_info = get_log_file_fp('.info.log', s_conf_file_name)
     print("#  info log : " + s_fp_log_info)
-    file_handler_info = logging.handlers.RotatingFileHandler(s_fp_log_info, mode="a", maxBytes=100*1024*1024, backupCount=3, encoding="utf-8")
+    file_handler_info = logging.handlers.RotatingFileHandler(s_fp_log_info, mode="a", maxBytes=100 * 1024 * 1024, backupCount=3, encoding="utf-8")
     file_handler_info.setLevel(logging.INFO)
     file_handler_info.setFormatter(formatter_info)
     o_logger.addHandler(file_handler_info)
@@ -67,7 +70,7 @@ def init_logging(s_conf_file_name='other', b_debug=False):
     if b_debug:
         s_fp_log_debug = get_log_file_fp('.debug.log', s_conf_file_name)
         print("#  debug log : " + s_fp_log_debug)
-        file_handler_debug = logging.handlers.RotatingFileHandler(s_fp_log_debug, mode="a", maxBytes=100*1024*1024, backupCount=3, encoding="utf-8")
+        file_handler_debug = logging.handlers.RotatingFileHandler(s_fp_log_debug, mode="a", maxBytes=100 * 1024 * 1024, backupCount=3, encoding="utf-8")
         file_handler_debug.setLevel(logging.DEBUG)
         file_handler_debug.setFormatter(formatter_debug)
         o_logger.addHandler(file_handler_debug)

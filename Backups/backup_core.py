@@ -3,7 +3,7 @@ import yaml
 import subprocess
 import os
 import tarfile
-import bin.common.logging
+import common.infradmin_logs
 
 
 class Backup:
@@ -23,7 +23,7 @@ class Backup:
         self.o_now = datetime.datetime.now()
         self.l_dirs_to_backup_fp = []
         self.l_exclude = []
-        self.o_logger = bin.common.logging.O_LOGGER
+        self.o_logger = common.infradmin_logs.O_LOGGER
 
     def run_command(self, command=None):
         result = subprocess.call(command, shell=False)
@@ -75,4 +75,4 @@ class Backup:
             #s_rsync_cmd = "rsync -av " + s_backup_path_fp + self.s_user + "@" + self.s_server + "::" + self.s_destination_path
             s_rsync_cmd = "rsync -av " + s_backup_path_fp + " " + self.s_destination_path
             self.o_logger.info("with command : " + s_rsync_cmd)
-            self.run_command(command=s_rsync_cmd, ignore_errors=True)
+            self.run_command(command=s_rsync_cmd)
