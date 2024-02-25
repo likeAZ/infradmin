@@ -43,11 +43,11 @@ class Backup:
         self.get_list_dirs_to_exclude()
         for s_dir_to_backup in os.listdir(self.s_source_data):
             s_dir_to_backup_fp = self.s_source_data + s_dir_to_backup
-            self.o_logger.info("adding " + s_dir_to_backup_fp + "in the backup list")
+            self.o_logger.info("adding " + s_dir_to_backup_fp + " in the backup list")
             self.l_dirs_to_backup_fp.append(s_dir_to_backup_fp)
         for s_dir_to_exclude in self.l_exclude:
-            if s_dir_to_exclude in self.l_dirs_to_backup_fp:
-                self.o_logger.info("deleting " + s_dir_to_exclude + "in the backup list")
+            while s_dir_to_exclude in self.l_dirs_to_backup_fp:
+                self.o_logger.info("deleting " + s_dir_to_exclude + " in the backup list")
                 self.l_dirs_to_backup_fp.remove(s_dir_to_exclude)
 
         s_timestamp = self.o_now.strftime(self.s_date_format)
