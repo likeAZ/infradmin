@@ -9,7 +9,8 @@ def main():
     """    Main function   """
     common.logging.O_LOGGER = common.logging.init_logging('Backup', False)
     common.logging.O_LOGGER.info('Lancement du backup')
-    backup_core.Backup(90, s_destination_path="/mnt/nas")
+    o_backup = backup_core.Backup(90, s_destination_path="/mnt/nas")
+    o_backup.backup()
 
 
 if __name__ == "__main__":
