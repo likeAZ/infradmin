@@ -65,7 +65,7 @@ class Backup:
         self.o_logger.info("deleting files older than : " + str(self.i_keep) + "days")
         for s_dir_backup in os.listdir(self.s_bck_path):
             s_date_backup = s_dir_backup[:8]
-            o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format)
+            o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= self.i_keep:
                 os.remove(self.s_bck_path + s_dir_backup)
