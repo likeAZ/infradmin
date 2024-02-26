@@ -78,6 +78,6 @@ class Backup:
             s_backup_path_fp = self.s_bck_path + s_backup_path
             self.o_logger.info("pushing : " + s_backup_path_fp + " to " + self.s_destination_path)
             #s_rsync_cmd = "rsync -av " + s_backup_path_fp + self.s_user + "@" + self.s_server + "::" + self.s_destination_path
-            s_rsync_cmd = "rsync -av " + s_backup_path_fp + " " + self.s_destination_path
+            s_rsync_cmd = "/usr/bin/rsync -av " + s_backup_path_fp + " " + self.s_destination_path
             self.o_logger.info("with command : " + s_rsync_cmd)
             self.run_command(command=s_rsync_cmd)
