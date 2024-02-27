@@ -8,7 +8,7 @@ class Compose:
     def __init__(self):
         self.s_app_dir = os.environ["APP_DIR"]
         self.s_compose_fp = self.s_app_dir + "conf/docker/docker-compose.yml"
-        self.s_json_conf_fp = self.s_app_dir + "conf/containers.json"
+        self.s_json_conf_fp = self.s_app_dir + "data/containers.json"
         with open(self.s_compose_fp, 'r') as compose_file:
             self.d_compose = yaml.safe_load(compose_file)
         compose_file.close()

@@ -12,7 +12,7 @@ class Backup:
         #with open("/usr/src/app/infradmin/conf/containers.json", 'r') as fp:
         #    self.d_json_conf = json.load(fp)
         #fp.close()
-        self.s_exclude_conf = "/usr/src/app/infradmin/conf/backup.yaml"
+        self.s_exclude_conf = "/usr/src/app/infradmin/conf/backup/backup.yaml"
         self.i_keep = i_keep
         self.s_bck_path = "/usr/src/app/infradmin/backup/"
         self.s_source_data = "/usr/src/app/infradmin/data/"
@@ -28,7 +28,10 @@ class Backup:
     def run_command(self, command=None):
         result = subprocess.call(command, shell=False)
 
-    def get_list_dirs_to_exclude(self):
+    def backups(self):
+        self.get_info_from_conf()
+
+    def get_info_from_conf(self):
         self.o_logger.info("getting exclude list")
         with open(self.s_exclude_conf) as o_yaml_conf_file:
             o_yaml = yaml.safe_load(o_yaml_conf_file)
@@ -38,10 +41,9 @@ class Backup:
         for s_exclude_dir in self.l_exclude:
             self.o_logger.info(s_exclude_dir)
 
-    def backup(self):
+    def do_backup(self):
         self.o_logger.info("starting backup...")
         l_files_to_backup_fp_tmp = []
-        self.get_list_dirs_to_exclude()
         for s_dir_path, l_subdirectories, l_files in os.walk(self.s_source_data):
             for s_file in l_files:
                 s_file_to_backup_fp = os.path.join(s_dir_path, s_file)
