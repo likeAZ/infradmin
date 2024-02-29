@@ -1,45 +1,17 @@
 local-mars:
   type: "local"
-  retention: 3
-  exclude:
-    - "/usr/src/app/infradmin/backup/"
-    - "/usr/src/app/infradmin/data/infradmin/backup"
-    - "/usr/src/app/infradmin/data/elasticsearch/data"
-    - "/usr/src/app/infradmin/data/elasticsearch/bck/"
-    - "/usr/src/app/infradmin/data/freshrss/database"
-    - "/usr/src/app/infradmin/data/jellyfin/media"
-    - "/usr/src/app/infradmin/data/jellyfin/conf/metadata"
-    - "/usr/src/app/infradmin/data/freshrss"
-    - "/usr/src/app/infradmin/data/prometheus/data"
-
+  keep: 3
 
 nas-lune:
   type: "mount"
-  retention: 90
+  keep: 90
   backup_path: /mnt/nas
-  exclude:
-    - "/usr/src/app/infradmin/backup/"
-    - "/usr/src/app/infradmin/data/infradmin/backup"
-    - "/usr/src/app/infradmin/data/elasticsearch/data"
-    - "/usr/src/app/infradmin/data/elasticsearch/bck/"
-    - "/usr/src/app/infradmin/data/freshrss/database"
-    - "/usr/src/app/infradmin/data/jellyfin/media"
-    - "/usr/src/app/infradmin/data/jellyfin/conf/metadata"
-    - "/usr/src/app/infradmin/data/freshrss"
-    - "/usr/src/app/infradmin/data/prometheus/data"
 
 kevin-remote:
-  type: "ftp ?"
-  retention: 90
-  backup_path: /mnt/nas
-  exclude:
-    - "/usr/src/app/infradmin/backup/"
-    - "/usr/src/app/infradmin/data/infradmin/backup"
-    - "/usr/src/app/infradmin/data/elasticsearch/data"
-    - "/usr/src/app/infradmin/data/elasticsearch/bck/"
-    - "/usr/src/app/infradmin/data/freshrss/database"
-    - "/usr/src/app/infradmin/data/jellyfin/media"
-    - "/usr/src/app/infradmin/data/jellyfin/conf/metadata"
-    - "/usr/src/app/infradmin/data/freshrss"
-    - "/usr/src/app/infradmin/data/prometheus/data"
+  type: "sftp"
+  port: 8600
+  user: hugo
+  password:
+  keep: 90
+  backup_path: /FTP
 
