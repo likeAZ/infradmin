@@ -1,13 +1,13 @@
-local-mars:
+local-bck:
   type: "local"
   keep: 3
 
-nas-lune:
+mount-bck:
   type: "mount"
   keep: 90
-  backup_path: "/mnt/nas"
+  backup_path: "/path/to/a/mount"
 
-kevin-remote:
+remote-bck:
   type: "sftp"
   hostname: ""
   port:
