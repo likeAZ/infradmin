@@ -5,13 +5,14 @@ local-mars:
 nas-lune:
   type: "mount"
   keep: 90
-  backup_path: /mnt/nas
+  backup_path: "/mnt/nas"
 
 kevin-remote:
   type: "sftp"
-  port: 8600
-  user: hugo
-  password:
+  hostname: ""
+  port:
+  user: ""
+  password: ""
   keep: 90
-  backup_path: /FTP
+  backup_path: "/path"
 
