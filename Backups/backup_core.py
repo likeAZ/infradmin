@@ -69,6 +69,7 @@ class Backup:
 
     def get_exclude_list(self):
         o_exclude_file = yaml.safe_load(self.s_exclude_conf)
+        self.o_logger.ino(f"object yml {o_exclude_file}")
         l_exclude = o_exclude_file.get('exclude')
         self.o_logger.info("exclude list for is :")
         for s_exclude_dir in l_exclude:
