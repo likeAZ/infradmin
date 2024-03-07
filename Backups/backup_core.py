@@ -112,7 +112,7 @@ class Backup:
 
 
     def rotate_local(self, i_keep, s_rotate_path):
-        self.o_logger.info(f"deleting files older than : {str(i_keep)} days in {s_rotate_path}")
+        self.o_logger.info(f"deleting backups older than : {str(i_keep)} days in {s_rotate_path}")
         for s_dir_backup in os.listdir(s_rotate_path):
             s_date_backup = s_dir_backup[:10]
             o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
@@ -151,7 +151,7 @@ class Backup:
                     "/usr/bin/rsync",
                     "-av",
                     "-e",
-                    f"ssh -p {s_port}",
+                    f"ssh -p {s_port} -o StrictHostKeyChecking=no",
                     s_backup_path_fp,
                     f"{s_auth}:{s_remote_backup_path}"
                 ]
