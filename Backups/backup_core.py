@@ -57,6 +57,7 @@ class Backup:
                     self.o_logger.info(f"deleting files older than : {str(i_keep)} days in {s_remote_backup_path}")
                     for s_backup_to_delete in l_backup_to_delete:
                         o_sftp.delete(s_remote_backup_path + s_backup_to_delete)
+                    o_sftp.disconnect()
 
 
 
@@ -74,6 +75,7 @@ class Backup:
         self.o_logger.info("exclude list for is :")
         for s_exclude_dir in l_exclude:
             self.o_logger.info(s_exclude_dir)
+        exclude_file.close()
         return l_exclude
 
     def is_local(self, s_backup_name):

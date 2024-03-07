@@ -16,7 +16,8 @@ class Sftp:
 
     def connect(self):
         """Connects to the sftp server and returns the sftp connection object"""
-
+        cnopts = pysftp.CnOpts()
+        cnopts.hostkeys = None
         try:
             # Get the sftp connection object
             self.o_connection = pysftp.Connection(
@@ -24,6 +25,7 @@ class Sftp:
                 username=self.s_username,
                 password=self.s_password,
                 port=self.i_port,
+                cnopts=cnopts
             )
         except Exception as err:
             raise Exception(err)
