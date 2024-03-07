@@ -114,7 +114,7 @@ class Backup:
     def rotate_local(self, i_keep, s_rotate_path):
         self.o_logger.info(f"deleting files older than : {str(i_keep)} days in {s_rotate_path}")
         for s_dir_backup in os.listdir(s_rotate_path):
-            s_date_backup = s_dir_backup[:8]
+            s_date_backup = s_dir_backup[:10]
             o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
