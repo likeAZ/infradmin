@@ -44,15 +44,11 @@ class Backup:
                     self.rotate_local(self.get_retention(s_backup_name), s_remote_backup_path)
                 case 'sftp':
                     s_hostname = self.d_yaml[s_backup_name]['hostname']
-                    self.o_logger.info(f"hostname is  {s_hostname}")
                     s_username = self.d_yaml[s_backup_name]['user']
-                    self.o_logger.info(f"username is  {s_username}")
                     s_password = self.d_yaml[s_backup_name]['password']
-                    self.o_logger.info(f"password is  {s_password}")
                     i_port = self.d_yaml[s_backup_name]['port']
-                    self.o_logger.info(f"Port is  {i_port}")
                     i_keep = self.get_retention(s_backup_name)
-                    s_remote_backup_path = self.get_backup_path_from_file(s_backup_name)
+                    s_remote_backup_path = os.path.join(self.get_backup_path_from_file(s_backup_name), self.s_backup_filename)
                     o_sftp = common.sftp.Sftp(s_hostname, s_username, s_password, i_port)
                     o_sftp.connect()
                     self.copy_backups(s_backup_type, s_remote_backup_path, o_sftp)
