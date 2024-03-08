@@ -126,7 +126,7 @@ class Backup:
     def delta_from_list(self, i_keep, l_backups):
         l_backups_to_delete = []
         for s_dir_backup in l_backups:
-            s_date_backup = s_dir_backup[:8]
+            s_date_backup = s_dir_backup[:10]
             o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
