@@ -52,7 +52,7 @@ class Backup:
                     o_sftp = common.sftp.Sftp(s_hostname, s_username, s_password, i_port)
                     o_sftp.connect()
                     self.copy_backups(s_backup_type, s_remote_backup_path, o_sftp)
-                    l_present_backup = o_sftp.listdir(s_remote_backup_path)
+                    l_present_backup = o_sftp.listdir(self.get_backup_path_from_file(s_backup_name))
                     l_backup_to_delete = self.delta_from_list(i_keep, l_present_backup)
                     self.o_logger.info(f"deleting files older than : {str(i_keep)} days in {s_remote_backup_path}")
                     for s_backup_to_delete in l_backup_to_delete:
