@@ -1,0 +1,3 @@
+healthcheck:
+  is_active: "True"
+  url: "https://some/url"

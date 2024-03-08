@@ -15,7 +15,9 @@ class Sftp:
         self.o_logger = common.infradmin_logs.O_LOGGER
 
     def connect(self):
-        """Connects to the sftp server and returns the sftp connection object"""
+        """
+        Connects to the sftp server and returns the sftp connection object
+        """
         cnopts = pysftp.CnOpts()
         cnopts.hostkeys = None
         try:
@@ -33,15 +35,20 @@ class Sftp:
             self.o_logger.info(f"Connected to {self.s_hostname} as {self.s_username}.")
 
     def disconnect(self):
-        """Closes the sftp connection"""
+        """
+        Closes the sftp connection
+        """
         self.o_connection.close()
         self.o_logger.info(f"Disconnected from host {self.s_hostname}")
 
-    def listdir(self, s_remote_path):
-        """lists all the files and directories in the specified path and returns them"""
+    def listdir(self, s_remote_path: str) -> list:
+        """
+        lists all the files and directories in the specified path and returns them
+        :return: A list of dirs
+        """
         return self.o_connection.listdir(s_remote_path)
 
-    def download(self, s_remote_path, s_target_local_path):
+    def download(self, s_remote_path: str, s_target_local_path: str):
         """
         Downloads the file from remote sftp server to local.
         Also, by default extracts the file to the specified target_local_path
@@ -67,7 +74,7 @@ class Sftp:
         except Exception as err:
             raise Exception(err)
 
-    def upload(self, s_source_local_path, s_remote_path):
+    def upload(self, s_source_local_path: str, s_remote_path: str):
         """
         Uploads the source files from local to the sftp server.
         """
