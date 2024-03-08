@@ -210,14 +210,14 @@ class Backup:
 
         match s_type:
             case 'mount':
-                s_rsync_cmd = [
+                l_rsync_cmd = [
                     "/usr/bin/rsync",
                     "-av",
                     s_backup_path_fp,
                     s_remote_backup_path
                 ]
-                self.o_logger.info("with command : " + str(s_rsync_cmd))
-                self.run_command(command=s_rsync_cmd)
+                self.o_logger.info("with command : " + str(l_rsync_cmd))
+                self.run_command(l_rsync_cmd)
 
             case 'sftp':
                 self.o_logger.info("upload data to a sftp server")
