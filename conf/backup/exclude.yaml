@@ -1,0 +1,3 @@
+exclude:
+  - "/a/path/to/exclude"
+  - "/an/other/path/to/exclude"

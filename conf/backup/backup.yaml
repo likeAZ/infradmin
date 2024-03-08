@@ -1,0 +1,18 @@
+local-bck:
+  type: "local"
+  keep: 3
+
+mount-bck:
+  type: "mount"
+  keep: 90
+  backup_path: "/path/to/a/mount"
+
+remote-bck:
+  type: "sftp"
+  hostname: ""
+  port:
+  user: ""
+  password: ""
+  keep: 90
+  backup_path: "/path"
+
