@@ -1,10 +1,10 @@
 import datetime
-import yaml
 import subprocess
 import os
 import tarfile
 import common.infradmin_logs
 import common.sftp
+from common.tools import load_yaml
 
 
 class Backup:
@@ -88,23 +88,19 @@ class Backup:
         Load yaml file : /usr/src/app/infradmin/conf/backup/backup.yaml and register self.d_yaml var
         """
         self.o_logger.info(f"getting info from conf file {self.s_conf_file}")
-        with open(self.s_conf_file) as o_yaml_conf_file:
-            self.d_yaml = yaml.safe_load(o_yaml_conf_file)
+        self.d_yaml = load_yaml(self.s_conf_file)
         self.l_backup_name = list(self.d_yaml.keys())
-        o_yaml_conf_file.close()
 
     def get_exclude_list(self) -> list:
         """
         Load yaml file : /usr/src/app/infradmin/conf/backup/exclude.yaml
         :return: list of dir to exclude from the backup
         """
-        with open(self.s_exclude_conf) as exclude_file:
-            o_exclude_file = yaml.safe_load(exclude_file)
+        o_exclude_file = load_yaml(self.s_exclude_conf)
         l_exclude = o_exclude_file.get('exclude')
         self.o_logger.info("exclude list for is :")
         for s_exclude_dir in l_exclude:
             self.o_logger.info(s_exclude_dir)
-        exclude_file.close()
         return l_exclude
 
     def is_local(self, s_backup_name: str) -> bool:

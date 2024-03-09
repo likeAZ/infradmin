@@ -1,8 +1,8 @@
 # coding: utf-8
 import common.infradmin_logs
 from Backups import backup_core
-import yaml
 import requests
+from common.tools import load_yaml
 """
 Lanceur 
 """
@@ -11,12 +11,7 @@ def main():
     """    Main function   """
     common.infradmin_logs.O_LOGGER = common.infradmin_logs.init_logging('Backup', False)
     common.infradmin_logs.O_LOGGER.info('Starting backup')
-    try:
-        with open("/usr/src/app/infradmin/conf/config.yaml") as o_yaml_conf_file:
-            d_yaml = yaml.safe_load(o_yaml_conf_file)
-    except:
-        common.infradmin_logs.O_LOGGER.warn('no config file found')
-
+    d_yaml = load_yaml("/usr/src/app/infradmin/conf/config.yaml")
     if d_yaml['healthcheck']['is_active']:
         s_healthchack_url = d_yaml['healthcheck']['url']
         requests.get(s_healthchack_url + '/start')
