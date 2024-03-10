@@ -1,5 +1,5 @@
-import datetime
-import subprocess
+from datetime import datetime
+from subprocess import call
 import os
 import tarfile
 import common.infradmin_logs
@@ -24,7 +24,7 @@ class Backup:
         self.s_date_format = "%Y%m%d%H%M%S"
 
         # Init fonctions
-        self.o_now = datetime.datetime.now()
+        self.o_now = datetime.now()
         self.o_logger = common.infradmin_logs.O_LOGGER
 
         # Init vars
@@ -38,7 +38,7 @@ class Backup:
         Make a shell command
         :param l_command: a shell command in a list format
         """
-        result = subprocess.call(l_command, shell=False)
+        result = call(l_command, shell=False)
 
     def backups(self):
         """
@@ -161,7 +161,6 @@ class Backup:
         o_tgz_file.close()
         self.o_logger.info("Backup finished")
 
-
     def rotate_local(self, i_keep: int, s_rotate_path: str):
         """
         Deleting files older than retention days to keep
@@ -171,7 +170,7 @@ class Backup:
         self.o_logger.info(f"deleting backups older than : {str(i_keep)} days in {s_rotate_path}")
         for s_dir_backup in os.listdir(s_rotate_path):
             s_date_backup = s_dir_backup[:10]
-            o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
+            o_date_backup = datetime.strptime(s_date_backup, self.s_date_format[:8])
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
                 self.o_logger.info(f"deleting {s_dir_backup}")
@@ -187,7 +186,7 @@ class Backup:
         l_backups_to_delete = []
         for s_dir_backup in l_backups:
             s_date_backup = s_dir_backup[:10]
-            o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
+            o_date_backup = datetime.strptime(s_date_backup, self.s_date_format[:8])
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
                 l_backups_to_delete.append(s_dir_backup)

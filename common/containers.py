@@ -1,17 +1,17 @@
-import json
-import yaml
-import os
+from os import environ
 import docker
+from common.tools import load_yaml, write_json
+import common.infradmin_logs
+import common.traefik_management
 
 
 class Compose:
     def __init__(self):
-        self.s_app_dir = os.environ["APP_DIR"]
+        self.o_logger = common.infradmin_logs.O_LOGGER
+        self.s_app_dir = environ["APP_DIR"]
         self.s_compose_fp = self.s_app_dir + "conf/docker/docker-compose.yml"
         self.s_json_conf_fp = self.s_app_dir + "data/containers.json"
-        with open(self.s_compose_fp, 'r') as compose_file:
-            self.d_compose = yaml.safe_load(compose_file)
-        compose_file.close()
+        self.d_compose = load_yaml(self.s_compose_fp)
 
     def create_json_conf(self):
         d_json = []
@@ -19,14 +19,17 @@ class Compose:
         for s_container_name in l_containers_name:
             d_json[s_container_name] = {
                 "l_volumes": self.get_volumes_for_container(s_container_name),
-                "b_is_bdd": "False"
+                "b_is_bdd": self.is_bdd(),
+                "url": self.get_external_url(s_container_name)
                 }
-        with open(self.s_json_conf_fp, 'w') as json_file:
-            json.dump(d_json, json_file)
-        json_file.close()
+        write_json(self.s_json_conf_fp, d_json)
 
     def is_bdd(self):
-        #//TODO
+        return False
+
+    def get_external_url(self, s_container_name: str):
+        o_traefik = common.traefik_management.Traefik()
+        return  o_traefik.get_url(s_container_name)
 
     def get_containers_name(self):
         l_container_name = []
@@ -41,6 +44,7 @@ class Compose:
 
 class Docker:
     def __init__(self):
+        self.o_logger = common.infradmin_logs.O_LOGGER
         self.o_docker = docker.from_env()
 
     def list_running_containers(self):
@@ -53,3 +57,8 @@ class Docker:
         o_container = self.o_docker.containers.get(s_id)
         s_container_name = o_container.name
         return s_container_name
+
+    def exec_command(self, s_container_id: str, s_command: str):
+        l_response = self.o_docker.containers.exec_create(container=s_container_id, cmd=s_command)
+        s_output = self.o_docker.containers.exec_start(exec_id=l_response['Id'])
+        self.o_logger.info('command returned : ' + s_output.decode('utf-8'))

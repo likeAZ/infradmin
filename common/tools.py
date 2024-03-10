@@ -18,3 +18,11 @@ def load_json(s_json_path):
     except:
         common.infradmin_logs.O_LOGGER.warn('no file found')
     return d_json
+
+def write_json(s_json_path: str, d_data):
+    try:
+        with open(s_json_path, 'w') as json_file:
+            json.dump(d_data, json_file)
+        json_file.close()
+    except:
+        common.infradmin_logs.O_LOGGER.warn('no file wrote')

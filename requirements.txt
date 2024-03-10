@@ -3,3 +3,4 @@ docker~=7.0.0
 pysftp~=0.2.9
 requests~=2.31.0
 ovh~=1.1.0
+dnspython~=2.6.1
