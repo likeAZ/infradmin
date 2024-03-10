@@ -132,8 +132,8 @@ class Backup:
         """
         return self.d_yaml[s_backup_name]['backup_path']
 
-    def log_progress(self, period, total_files, progress_lock, progress):
-        while True:
+    def log_progress(self, period, total_files, progress_lock, progress, stop_event):
+        while not stop_event.is_set():
             time.sleep(period)
             # Logger la progression
             with progress_lock:
@@ -178,12 +178,15 @@ class Backup:
             progress_lock = threading.Lock()
             progress = [0]
 
+            stop_event = threading.Event()
+
             # Démarrage du thread pour logger la progression
             log_thread = threading.Thread(target=self.log_progress, args=(
                 30,
                 len(self.l_files_to_backup_fp),
                 progress_lock,
-                progress
+                progress,
+                stop_event
             ))
             log_thread.start()
 
@@ -203,6 +206,8 @@ class Backup:
             # Attendre la fin de tous les threads
             for thread in threads:
                 thread.join()
+            # Définir l'événement pour arrêter le thread de logging
+            stop_event.set()
 
             # Attendre la fin du thread de logging
             log_thread.join()
