@@ -1,6 +1,8 @@
 from common.tools import load_yaml
 import os
 import common.infradmin_logs
+import common.containers
+import yaml
 
 
 class Traefik:
@@ -20,3 +22,7 @@ class Traefik:
 
     def get_url(self, s_container_name):
         return s_url
+
+    def construct_dyn_file(self):
+        o_docker = common.containers.Docker()
+        d_containers_labels = o_docker.get_all_containers_labels()

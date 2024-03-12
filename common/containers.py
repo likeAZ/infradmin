@@ -31,7 +31,7 @@ class Compose:
         o_traefik = common.traefik_management.Traefik()
         return  o_traefik.get_url(s_container_name)
 
-    def get_containers_name(self):
+    def get_containers_name(self) -> list:
         l_container_name = []
         for containers in self.d_compose.items():
             l_container_name.append(containers[0])
@@ -62,3 +62,21 @@ class Docker:
         l_response = self.o_docker.containers.exec_create(container=s_container_id, cmd=s_command)
         s_output = self.o_docker.containers.exec_start(exec_id=l_response['Id'])
         self.o_logger.info('command returned : ' + s_output.decode('utf-8'))
+
+    def get_labels_from_container(self, s_container_name: str) -> list:
+        o_container = self.o_docker.containers.get(s_container_name)
+        l_labels = o_container.labels
+        return l_labels
+
+    def get_all_containers_labels(self):
+        d_ret = {}
+        o_compose = Compose()
+        l_containers = o_compose.get_containers_name()
+        i_nb_containers = len(l_containers)
+        for i in range(i_nb_containers):
+            l_labels = self.get_labels_from_container(l_containers[i])
+            d_ret[i] = {
+                l_containers[i]: l_labels
+            }
+        return d_ret
+

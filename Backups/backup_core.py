@@ -72,8 +72,10 @@ class Backup:
 
                     o_sftp = common.sftp.Sftp(s_hostname, s_username, s_password, i_port)
                     o_sftp.connect()
-
-                    self.copy_backups(s_backup_type, s_remote_backup_path, o_sftp)
+                    if o_sftp.size_available():
+                        self.copy_backups(s_backup_type, s_remote_backup_path, o_sftp)
+                    else:
+                        self.o_logger.warn(f"No space available on {s_password}")
 
                     l_present_backup = o_sftp.listdir(self.get_backup_path_from_file(s_backup_name))
                     l_backup_to_delete = self.delta_from_list(i_keep, l_present_backup)

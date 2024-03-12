@@ -92,5 +92,24 @@ class Sftp:
             raise Exception(err)
 
     def delete(self, s_file_path):
-        self.o_logger.info(f"delting {s_file_path} on {self.s_hostname}")
-        self.o_connection.remove(s_file_path)
+        try:
+            self.o_logger.info(f"delting {s_file_path} on {self.s_hostname}")
+            self.o_connection.remove(s_file_path)
+        except Exception as err:
+            raise Exception(err)
+
+    def execute_command(self, s_command: str):
+        try:
+            self.o_logger.info(f"executing command {s_command} on {self.s_hostname}")
+            l_result = self.o_connection.execute(s_command)
+        except Exception as err:
+            raise Exception(err)
+        return l_result
+
+    def size_available(self):
+        b_ret = False
+        l_result = self.execute_command('df -h')
+        for s_ligne in l_result:
+            print('if disk available so true')
+
+        return b_ret
