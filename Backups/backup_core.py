@@ -80,7 +80,7 @@ class Backup:
                     self.o_logger.info(f"deleting files older than : {str(i_keep)} days in {self.get_backup_path_from_file(s_backup_name)}")
 
                     for s_backup_to_delete in l_backup_to_delete:
-                        o_sftp.delete(self.get_backup_path_from_file(s_backup_name) + s_backup_to_delete)
+                        o_sftp.delete(os.path.join(self.get_backup_path_from_file(s_backup_name) , s_backup_to_delete))
                     o_sftp.disconnect()
 
 
