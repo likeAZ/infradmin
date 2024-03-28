@@ -229,7 +229,8 @@ class Backup:
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
                 self.o_logger.info(f"deleting {s_dir_backup}")
-                os.remove(os.path.join(s_rotate_path , s_dir_backup))
+                s_file_fp_to_delete = os.path.join(s_rotate_path, s_dir_backup)
+                os.remove(s_file_fp_to_delete)
 
     def delta_from_list(self, i_keep: int, l_backups: list) -> list:
         """
