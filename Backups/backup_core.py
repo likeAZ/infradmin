@@ -35,13 +35,6 @@ class Backup:
         self.d_yaml = []
         self.s_backup_filename = None
 
-    def run_command(self, l_command: list):
-        """
-        Make a shell command
-        :param l_command: a shell command in a list format
-        """
-        result = subprocess.call(l_command, shell=False)
-
     def backups(self):
         """
         Main fonction that making backup
@@ -63,19 +56,14 @@ class Backup:
                     self.rotate_local(self.get_retention(s_backup_name), s_remote_backup_path)
 
                 case 'sftp':
-                    s_hostname = self.d_yaml[s_backup_name]['hostname']
-                    s_username = self.d_yaml[s_backup_name]['user']
-                    s_password = self.d_yaml[s_backup_name]['password']
-                    i_port = self.d_yaml[s_backup_name]['port']
                     i_keep = self.get_retention(s_backup_name)
                     s_remote_backup_path = os.path.join(self.get_backup_path_from_file(s_backup_name), self.s_backup_filename)
 
-                    o_sftp = common.sftp.Sftp(s_hostname, s_username, s_password, i_port)
-                    o_sftp.connect()
+                    o_sftp = self.connect_to_sftp(s_backup_name)
                     if o_sftp.size_available():
                         self.copy_backups(s_backup_type, s_remote_backup_path, o_sftp)
                     else:
-                        self.o_logger.warn(f"No space available on {s_hostname}")
+                        self.o_logger.warn(f"No space available on {self.d_yaml[s_backup_name]['hostname']}")
 
                     l_present_backup = o_sftp.listdir(self.get_backup_path_from_file(s_backup_name))
                     l_backup_to_delete = self.delta_from_list(i_keep, l_present_backup)
@@ -85,7 +73,107 @@ class Backup:
                         o_sftp.delete(s_remote_backup_path + s_backup_to_delete)
                     o_sftp.disconnect()
 
-
+    def restore(self, s_restore_path:str, s_date_to_restore: str):
+        """
+        Restore the backup
+        :param s_date: date of the backup to restore
+        """
+        s_date = self.format_date(s_date_to_restore)
+        self.s_restore_path = s_restore_path
+        
+        self.o_logger.info("Sarching the backup to restore...")
+ 
+        for s_backup in l_backups:
+            if s_backup.startswith(s_date):
+                self.o_logger.info("Backup found")
+                self.restore_from_local(self.s_bck_path + s_backup)
+            else:
+                self.o_logger.info(f"Backup not found locally for {s_date}")
+                b_local = False
+        
+        self.o_logger.info("Searching the backup in remote repos")
+        self.get_info_from_conf()
+        for s_backup_name in self.l_backup_name:
+            if self.is_local(s_backup_name):
+                l_backups_files_name = os.listdir(self.s_bck_path)
+                for s_backup_file_name in l_backups_files_name:
+                    if s_backup_file_name.startswith(s_date):
+                        self.o_logger.info("Backup found")
+                        self.restore_from_local(self.s_bck_path + s_backup_file_name, s_restore_path)
+                    else:
+                        self.o_logger.info(f"Backup not found locally for {s_date}")
+            else:
+                match self.d_yaml[s_backup_name]['type']:
+                    case 'mount':
+                        s_remote_backup_path = self.get_backup_path_from_file(s_backup_name)
+                        l_backups = os.listdir(s_remote_backup_path)
+                        for s_backup in l_backups:
+                            if s_backup.startswith(s_date):
+                                self.o_logger.info("Backup found")
+                                self.restore_from_local(s_remote_backup_path + s_backup)
+                            else:
+                                self.o_logger.info(f"Backup not found in {s_remote_backup_path}")
+                    case 'sftp':
+                        s_remote_backup_path = self.get_backup_path_from_file(s_backup_name)
+                        o_sftp = self.connect_to_sftp(s_backup_name)
+                        l_backups = o_sftp.listdir(s_remote_backup_path)
+                        for s_backup in l_backups:
+                            if s_backup.startswith(s_date):
+                                self.o_logger.info("Backup found")
+                                self.restore_from_sftp(s_remote_backup_path, s_backup, o_sftp)
+                            else:
+                                self.o_logger.info(f"Backup not found in {s_remote_backup_path}")
+                        o_sftp.disconnect()
+        
+    def format_date(self, s_date: str) -> datetime.datetime:
+        """
+        Format the date from dd/mm/AAAA to AAAAmmdd.
+        
+        :param date_str: Date string in the format dd/mm/AAAA.
+        :return: Formatted date string in the format AAAAmmdd.
+        """
+        o_date = datetime.datetime.strptime(s_date, '%d/%m/%Y')
+        return o_date.strftime('%Y%m%d')
+    
+            
+    def restore_from_local(self, s_full_backup_path: str):
+        """
+        Restore from a full backup and a list of incremental backups.
+        
+        :param full_backup_path: Path to the full backup tar.gz file.
+        """
+        self.o_logger.info("Starting extracting...")
+        self.o_logger.info(f"Restoring full backup from {s_full_backup_path}")
+        with tarfile.open(s_full_backup_path, 'r:gz') as tar:
+            tar.extractall(self.s_restore_path)
+        self.o_logger.info("Restore completed.")
+        
+    def restore_from_sftp(self, s_remote_backup_path, s_backup_name, o_sftp):
+        """
+        Restore from a backup stored on a sftp server.
+        """
+        self.o_logger.info(f"Starting downloading {s_remote_backup_path + s_backup_name} from sftp...")
+        o_sftp.download(s_remote_backup_path + s_backup_name, self.s_restore_path)
+        self.o_logger.info("Download completed.")
+        self.o_logger.info("Starting extracting...")
+        with tarfile.open(self.s_restore_path + s_backup_name, 'r:gz') as tar:
+            tar.extractall(self.s_restore_path)
+        self.o_logger.info("Restore completed.")
+    
+    def connect_to_sftp(self, s_backup_name: str) -> common.sftp.Sftp:
+        """
+        Connect to a sftp server.
+        
+        :param backup_name: Name of the backup to restore.
+        :return: Sftp object.
+        """
+        s_hostname = self.d_yaml[s_backup_name]['hostname']
+        s_username = self.d_yaml[s_backup_name]['user']
+        s_password = self.d_yaml[s_backup_name]['password']
+        i_port = self.d_yaml[s_backup_name]['port']
+        o_sftp = common.sftp.Sftp(s_hostname, s_username, s_password, i_port)
+        o_sftp.connect()
+        return o_sftp
 
     def get_info_from_conf(self):
         """
@@ -273,3 +361,9 @@ class Backup:
             case 'sftp':
                 self.o_logger.info("upload data to a sftp server")
                 o_sftp.upload(s_backup_path_fp, s_remote_backup_path)
+    def run_command(self, l_command: list):
+        """
+        Make a shell command
+        :param l_command: a shell command in a list format
+        """
+        result = subprocess.call(l_command, shell=False)
