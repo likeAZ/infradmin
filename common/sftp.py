@@ -1,6 +1,7 @@
 import pysftp
 import os
 import common.infradmin_logs
+import re
 
 
 class Sftp:
@@ -106,10 +107,19 @@ class Sftp:
             raise Exception(err)
         return l_result
 
-    def size_available(self):
+    def size_available(self, i_required_space_gb: int) -> bool:
         b_ret = False
         l_result = self.execute_command('df -h')
         for s_ligne in l_result:
-            print('if disk available so true')
+            s_ligne = s_ligne.decode('utf-8').strip()  # Decode bytes to string and strip whitespace
+            match = re.search(r'(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)%', s_ligne)
+            if match:
+                size, size_unit, used, used_unit, avail, avail_unit, root, root_unit, capacity = match.groups()
+                if avail_unit == 'G' and int(avail) >= i_required_space_gb:
+                    b_ret = True
+                elif avail_unit == 'T' and int(avail) * 1024 >= i_required_space_gb:
+                    b_ret = True
+                # Add more unit conversions if needed
+                break
 
         return b_ret
