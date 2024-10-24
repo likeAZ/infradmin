@@ -312,9 +312,9 @@ class Backup:
         :param file_path: Path to the file.
         :return: Size of the file in bytes.
         """
-         i_size_in_bytes = os.path.getsize(s_file_path)
-         i_size_in_gb = i_size_in_bytes / (1024 ** 3)
-        return i_size_in_bytes
+        i_size_in_bytes = os.path.getsize(s_file_path)
+        i_size_in_gb = i_size_in_bytes / (1024 ** 3)
+        return i_size_in_gb
 
     def rotate_local(self, i_keep: int, s_rotate_path: str):
         """
