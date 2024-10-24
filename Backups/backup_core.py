@@ -40,7 +40,7 @@ class Backup:
         Main fonction that making backup
         """
         self.get_info_from_conf()
-        self.do_backup()
+        i_backup_size = self.do_backup()
 
         for s_backup_name in self.l_backup_name:
             self.o_logger.info(f"For {s_backup_name}")
@@ -60,7 +60,7 @@ class Backup:
                     s_remote_backup_path = os.path.join(self.get_backup_path_from_file(s_backup_name), self.s_backup_filename)
 
                     o_sftp = self.connect_to_sftp(s_backup_name)
-                    if o_sftp.size_available():
+                    if o_sftp.size_available(i_backup_size):
                         self.copy_backups(s_backup_type, s_remote_backup_path, o_sftp)
                     else:
                         self.o_logger.warn(f"No space available on {self.d_yaml[s_backup_name]['hostname']}")
@@ -303,7 +303,18 @@ class Backup:
             log_thread.join()
 
         self.o_logger.info("Backup finished")
+        return self.get_file_size_in_gb(self.s_bck_path + self.s_backup_filename)
 
+    def get_file_size_in_gb(self, s_file_path) -> int:
+        """
+        Get the size of a file in bytes.
+        
+        :param file_path: Path to the file.
+        :return: Size of the file in bytes.
+        """
+         i_size_in_bytes = os.path.getsize(s_file_path)
+         i_size_in_gb = i_size_in_bytes / (1024 ** 3)
+        return i_size_in_bytes
 
     def rotate_local(self, i_keep: int, s_rotate_path: str):
         """
