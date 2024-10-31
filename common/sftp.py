@@ -110,11 +110,13 @@ class Sftp:
     def size_available(self, i_required_space_gb: int) -> bool:
         b_ret = False
         l_result = self.execute_command('df -h')
+        self.o_logger.info(f"Checking available space on {self.s_hostname} : {l_result}")
         for s_ligne in l_result:
             s_ligne = s_ligne.decode('utf-8').strip()  # Decode bytes to string and strip whitespace
             match = re.search(r'(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)%', s_ligne)
             if match:
                 size, size_unit, used, used_unit, avail, avail_unit, root, root_unit, capacity = match.groups()
+                self.o_logger.info(f"Checking available space on {self.s_hostname} : {size} {size_unit} {used} {used_unit} {avail} {avail_unit} {root} {root_unit} {capacity}")
                 if avail_unit == 'G' and int(avail) >= i_required_space_gb:
                     b_ret = True
                 elif avail_unit == 'T' and int(avail) * 1024 >= i_required_space_gb:
