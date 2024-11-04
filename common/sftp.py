@@ -107,14 +107,14 @@ class Sftp:
             raise Exception(err)
         return l_result
 
-    def size_available(self, i_required_space_gb: int) -> bool:
+    def size_available(self, i_required_space_gb: int, s_file_path: str) -> bool:
         b_ret = False
-        l_result = self.execute_command('df -h')
+        l_result = self.execute_command(f'df -h {s_file_path}')
         self.o_logger.info(f"Checking available space on {self.s_hostname} : {l_result}")
         for s_ligne in l_result:
             s_ligne = s_ligne.decode('utf-8').strip()  # Decode bytes to string and strip whitespace
             self.o_logger.info(f"Checking available space on line : {s_ligne}")
-            match = re.search(r'(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)%', s_ligne)
+            match = re.search(r'(\S+)\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)%\s+(\S+)', s_ligne)
             if match:
                 size, size_unit, used, used_unit, avail, avail_unit, root, root_unit, capacity = match.groups()
                 self.o_logger.info(f"Checking available space on {self.s_hostname} : {size} {size_unit} {used} {used_unit} {avail} {avail_unit} {root} {root_unit} {capacity}")

@@ -60,7 +60,7 @@ class Backup:
                     s_remote_backup_path = os.path.join(self.get_backup_path_from_file(s_backup_name), self.s_backup_filename)
 
                     o_sftp = self.connect_to_sftp(s_backup_name)
-                    if o_sftp.size_available(i_backup_size):
+                    if o_sftp.size_available(i_backup_size, s_remote_backup_path):
                         self.copy_backups(s_backup_type, s_remote_backup_path, o_sftp)
                     else:
                         self.o_logger.warn(f"No space available on {self.d_yaml[s_backup_name]['hostname']}")
