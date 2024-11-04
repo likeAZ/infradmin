@@ -109,7 +109,8 @@ class Sftp:
 
     def size_available(self, i_required_space_gb: int, s_file_path: str) -> bool:
         b_ret = False
-        l_result = self.execute_command(f'df -h {s_file_path}')
+        s_dir_path = os.path.dirname(s_file_path)
+        l_result = self.execute_command(f'df -h {s_dir_path}')
         self.o_logger.info(f"Checking available space on {self.s_hostname} : {l_result}")
         for s_ligne in l_result:
             s_ligne = s_ligne.decode('utf-8').strip()  # Decode bytes to string and strip whitespace
