@@ -113,6 +113,7 @@ class Sftp:
         self.o_logger.info(f"Checking available space on {self.s_hostname} : {l_result}")
         for s_ligne in l_result:
             s_ligne = s_ligne.decode('utf-8').strip()  # Decode bytes to string and strip whitespace
+            self.o_logger.info(f"Checking available space on line : {l_result}")
             match = re.search(r'(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)%', s_ligne)
             if match:
                 size, size_unit, used, used_unit, avail, avail_unit, root, root_unit, capacity = match.groups()
