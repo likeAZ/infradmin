@@ -325,7 +325,7 @@ class Backup:
         self.o_logger.info(f"deleting backups older than : {str(i_keep)} days in {s_rotate_path}")
         for s_dir_backup in os.listdir(s_rotate_path):
             s_date_backup = s_dir_backup[:8]
-            o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
+            o_date_backup = datetime.datetime.strptime(s_date_backup, '%Y%m%d')
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
                 self.o_logger.info(f"deleting {s_dir_backup}")
@@ -343,7 +343,7 @@ class Backup:
         l_backups_to_delete = []
         for s_dir_backup in l_backups:
             s_date_backup = s_dir_backup[:8]
-            o_date_backup = datetime.datetime.strptime(s_date_backup, self.s_date_format[:8])
+            o_date_backup = datetime.datetime.strptime(s_date_backup, '%Y%m%d')
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
                 l_backups_to_delete.append(s_dir_backup)
