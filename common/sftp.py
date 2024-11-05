@@ -82,7 +82,7 @@ class Sftp:
 
         try:
             self.o_logger.info(
-                f"uploading to {self.s_hostname} as {self.s_username} [(remote path: {s_remote_path});(source local path: {s_source_local_path})]"
+                f"uploading to {self.s_hostname} as {self.s_username} from local path: {s_source_local_path} to remote path: {s_remote_path}"
             )
 
             # Download file from SFTP
@@ -111,15 +111,14 @@ class Sftp:
         b_ret = False
         s_dir_path = os.path.dirname(s_file_path)
         l_result = self.execute_command(f'df -h {s_dir_path}')
-        self.o_logger.info(f"Checking available space on {self.s_hostname} : {l_result}")
+        self.o_logger.info(f"Checking available space on {self.s_hostname}")
         for s_ligne in l_result:
             s_ligne = s_ligne.decode('utf-8').strip()  # Decode bytes to string and strip whitespace
             self.o_logger.info(f"Checking available space on line : {s_ligne}")
             match = re.search(r'(\S+)\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)%\s+(\S+)', s_ligne)
             if match:
                 filesystem, size, size_unit, used, used_unit, avail, avail_unit, use_percent, mounted_on = match.groups()
-                self.o_logger.info(f"Checking if {i_required_space_gb} G is lower than {avail} {avail_unit}")
-                self.o_logger.info(f"debug: filesystem is {filesystem} size is {size}{size_unit}, used is {used}{used_unit}, avail is {avail}{avail_unit}, percent used is {use_percent}, mounted on {mounted_on}")
+                self.o_logger.info(f"Checking if {s_file_path} weight ({i_required_space_gb} GB)  is lower than {avail} {avail_unit} available on {mounted_on}")
                 if avail_unit == 'G' and int(avail) >= i_required_space_gb:
                     b_ret = True
                 elif avail_unit == 'T' and int(avail) * 1024 >= i_required_space_gb:

@@ -68,9 +68,10 @@ class Backup:
                     l_present_backup = o_sftp.listdir(self.get_backup_path_from_file(s_backup_name))
                     l_backup_to_delete = self.delta_from_list(i_keep, l_present_backup)
                     self.o_logger.info(f"deleting files older than : {str(i_keep)} days in {self.get_backup_path_from_file(s_backup_name)}")
-
+                    self.o_logger.info(f"Deleting {l_backup_to_delete}")
                     for s_backup_to_delete in l_backup_to_delete:
-                        o_sftp.delete(s_remote_backup_path)
+                        s_backup_path_to_delete = os.path.join(self.get_backup_path_from_file(s_backup_name), s_backup_to_delete)
+                        o_sftp.delete(s_backup_path_to_delete)
                     o_sftp.disconnect()
 
     def restore(self, s_restore_path:str, s_date_to_restore: str):
@@ -325,7 +326,7 @@ class Backup:
         self.o_logger.info(f"deleting backups older than : {str(i_keep)} days in {s_rotate_path}")
         for s_dir_backup in os.listdir(s_rotate_path):
             s_date_backup = s_dir_backup[:8]
-            self.o_logger.info(f"Date is {s_date_backup}")
+            self.o_logger.info(f"For backup {s_dir_backup} date is {s_date_backup}")
             o_date_backup = datetime.datetime.strptime(s_date_backup, '%Y%m%d')
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
@@ -344,14 +345,14 @@ class Backup:
         l_backups_to_delete = []
         for s_dir_backup in l_backups:
             s_date_backup = s_dir_backup[:8]
-            self.o_logger.info(f"Date is {s_date_backup}")
+            self.o_logger.info(f"For backup {s_dir_backup} date is {s_date_backup}")
             o_date_backup = datetime.datetime.strptime(s_date_backup, '%Y%m%d')
             i_date_delta = int((self.o_now - o_date_backup).days)
             if i_date_delta >= i_keep:
+                self.o_logger.info(f"Adding {s_dir_backup} to delete list")
                 l_backups_to_delete.append(s_dir_backup)
             else:
                 self.o_logger.info(f"Keeping {s_dir_backup}")
-        self.o_logger.info(f"Deleting {l_backups_to_delete}")
         return l_backups_to_delete
 
     def copy_backups(self, s_type: str, s_remote_backup_path: str, o_sftp=None):
