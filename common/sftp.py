@@ -118,7 +118,8 @@ class Sftp:
             match = re.search(r'(\S+)\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)([KMGTP])\s+(\d+)%\s+(\S+)', s_ligne)
             if match:
                 size, size_unit, used, used_unit, avail, avail_unit, root, root_unit, capacity = match.groups()
-                self.o_logger.info(f"Checking available space on {self.s_hostname} : {size} {size_unit} {used} {used_unit} {avail} {avail_unit} {root} {root_unit} {capacity}")
+                self.o_logger.info(f"Checking if {i_required_space_gb} is lower than {avail}{avail_unit}")
+                self.o_logger.info(f"debug: size is {size}{size_unit}, used is {used}{used_unit}, avail is {avail}{avail_unit}, root is {root}{root_unit}, capacity is {capacity}")
                 if avail_unit == 'G' and int(avail) >= i_required_space_gb:
                     b_ret = True
                 elif avail_unit == 'T' and int(avail) * 1024 >= i_required_space_gb:
