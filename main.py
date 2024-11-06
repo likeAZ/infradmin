@@ -3,6 +3,7 @@ import argparse
 import common.infradmin_logs
 from Backups import backup_core
 import time
+import datetime
 """
 Lanceur 
 """
@@ -15,10 +16,12 @@ def main():
     parser.add_argument('--date', help='Date of the backup to restore', required=False)
     args = parser.parse_args()
     
+    start_time = time.time()
+    
+    s_log_file_name = datetime.datetime.now().strftime('%Y-%m-%d') + '_backup'
     common.infradmin_logs.O_LOGGER = common.infradmin_logs.init_logging('Backup', False)
     common.infradmin_logs.O_LOGGER.info('Starting operation: ' + args.operation)
     
-    start_time = time.time()
     
     if args.operation == 'backup':
         o_backup = backup_core.Backup()
