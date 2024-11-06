@@ -1,11 +1,14 @@
+# Local lib
+from common.tools import load_yaml
+from common.containers import Docker
+import common.infradmin_logs
+import common.sftp
+# Python lib
 import datetime
 import time
-from common.tools import load_yaml
 import subprocess
 import os
 import tarfile
-import common.infradmin_logs
-import common.sftp
 import threading
 
 
@@ -18,9 +21,11 @@ class Backup:
         #with open("/usr/src/app/infradmin/conf/containers.json", 'r') as fp:
         #    self.d_json_conf = json.load(fp)
         #fp.close()
+        self.o_docker = Docker()
         # Init path
         self.s_conf_file = "/usr/src/app/infradmin/conf/backup/backup.yaml"
         self.s_exclude_conf = "/usr/src/app/infradmin/conf/backup/exclude.yaml"
+        self.s_databases_conf = "/usr/src/app/infradmin/conf/backup/databases.yaml"
         self.s_bck_path = "/usr/src/app/infradmin/backup/"
         self.s_source_data = "/usr/src/app/infradmin/data/"
         self.s_date_format = "%Y%m%d%H%M%S"
@@ -33,13 +38,16 @@ class Backup:
         self.l_files_to_backup_fp = []
         self.l_backup_name = []
         self.d_yaml = []
+        self.d_yaml_databases = []
         self.s_backup_filename = None
+        self.l_databases_conf = []
 
     def backups(self):
         """
         Main fonction that making backup
         """
         self.get_info_from_conf()
+        self.get_databases_conf_from_file()
         i_backup_size = self.do_backup()
 
         for s_backup_name in self.l_backup_name:
@@ -184,17 +192,54 @@ class Backup:
         self.d_yaml = load_yaml(self.s_conf_file)
         self.l_backup_name = list(self.d_yaml.keys())
 
-    def get_exclude_list(self) -> list:
+    def get_exclude_list_from_file(self) -> list:
         """
         Load yaml file : /usr/src/app/infradmin/conf/backup/exclude.yaml
         :return: list of dir to exclude from the backup
         """
         o_exclude_file = load_yaml(self.s_exclude_conf)
         l_exclude = o_exclude_file.get('exclude')
-        self.o_logger.info("exclude list for is :")
-        for s_exclude_dir in l_exclude:
-            self.o_logger.info(s_exclude_dir)
         return l_exclude
+    
+    def get_databases_conf_from_file(self):
+        self.o_logger.info(f"getting info from conf file {self.s_databases_conf}")
+        self.d_yaml_databases = load_yaml(self.s_databases_conf)
+        self.l_databases_conf = list(self.d_yaml_databases.keys())
+        
+    
+    def get_exclude_bdd_path_from_docker(self):
+        """
+        Get the list of bdd path to exclude from the backup
+        :return: list of bdd path to exclude
+        """
+        l_containers_name = self.o_docker.get_containers_name()
+        l_exclude_bdd_path = []
+        for s_container_name in l_containers_name:
+            if self.o_docker.is_bdd(s_container_name):
+                l_volumes = self.o_docker.get_volumes_for_container(s_container_name)
+                for s_volume in l_volumes:
+                    s_source = s_volume.split(":")[0]
+                    s_destination = s_volume.split(":")[1]
+                    match s_destination:
+                        case '/var/lib/mysql':
+                            s_mapped_path = self.map_volume_path(s_source)
+                            l_exclude_bdd_path.append(s_mapped_path)
+                        case '/var/lib/postgresql/data':
+                            s_mapped_path = self.map_volume_path(s_source)
+                            l_exclude_bdd_path.append(s_mapped_path)
+                        case '/usr/share/elasticsearch/data':
+                            s_mapped_path = self.map_volume_path(s_source)
+                            l_exclude_bdd_path.append(s_mapped_path)      
+        return l_exclude_bdd_path
+
+    def map_volume_path(self, s_volume_to_map: str) -> str:
+        """
+        Map a volume path to the host path.
+        
+        :param volume_to_map: Volume path to map.
+        :return: Mapped volume path.
+        """
+        return s_volume_to_map.replace(self.o_docker.get_own_container_volume_source(), '/usr/src/app/infradmin/data/')
 
     def is_local(self, s_backup_name: str) -> bool:
         """
@@ -244,14 +289,54 @@ class Backup:
         filename: AAAAmmddHHmmss-mars.tar.gz
         """
         self.o_logger.info("starting backup...")
-        l_files_to_backup_fp_tmp = []
-        l_exclude = self.get_exclude_list()
+        
+        self.o_logger.info("Calculating mandatory paths to exclude")
+        l_exclude_mandatory = ["/usr/src/app/infradmin/backup/", "/usr/src/app/infradmin/data/infradmin/backup/"]
+        
+        self.o_logger.info("Calculating paths to exclude from yaml file")
+        l_exclude = self.get_exclude_list_from_file()
+        
+        self.o_logger.info("Calculating paths to exclude from docker databases containers")
+        l_exclude_bdd_path = self.get_exclude_bdd_path_from_docker()
+        
+        l_all_exclude = l_exclude + l_exclude_bdd_path + l_exclude_mandatory
+        
+        self.o_logger.info("Excluding :")
+        for s_exclude in l_all_exclude:
+            self.o_logger.info(s_exclude)
+        
+        self.o_logger.info("backuping databases ...")
+        l_databases_container_name = self.o_docker.get_database_containers_name()
+        for s_database_container_name in l_databases_container_name:
+            s_type = self.o_docker.get_database_type(s_database_container_name)
+            match s_type:
+                
+                case 'mariadb':
+                    self.o_logger.info(f"Backing up {s_database_container_name} of type {s_type}")
+                    s_database_backup_volume = self.d_yaml_databases[s_database_container_name]['backup_volume']
+                    s_backup_path_container_side = s_database_backup_volume.split(":")[1]
+                    s_backup_path_host_side = s_database_backup_volume.split(":")[0]
+                    if 'nextcloud_container_name' in self.d_yaml_databases[s_database_container_name] and self.o_docker.is_container_exist(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']):
+                        s_nextcloud_container_name = self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']
+                        self.o_docker.exec_command(self.o_docker.from_name_to_id(s_nextcloud_container_name), "nextcloud php occ maintenance:mode --on", "www-data")
+                    s_backup_cmd = "/usr/bin/mariadb-dump -u root -p$\{MARIADB_ROOT_PASSWORD\} --all-databases > " + s_backup_path_container_side + datetime.datetime.now().strftime(self.s_date_format) + "-backup.sql"
+                    self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
 
+                case 'postgresql':
+                    self.o_logger.info(f"Backing up {s_database_container_name} of type {s_type}")
+                    todo
+                case 'elasticsearch':
+                    self.o_logger.info(f"Backing up {s_database_container_name} of type {s_type}")
+                    todo
+                case 'unknown':
+                    self.o_logger.info(f"{s_type} is not supported skipping")
+                    continue
+        
         def generate_files_to_backup():
             for s_dir_path, _, l_files in os.walk(self.s_source_data):
                 for s_file in l_files:
                     s_file_to_backup_fp = os.path.join(s_dir_path, s_file)
-                    if not any(s_file_to_backup_fp.startswith(s_dir) for s_dir in l_exclude):
+                    if not any(s_file_to_backup_fp.startswith(s_dir) for s_dir in l_all_exclude):
                         yield s_file_to_backup_fp
 
         self.l_files_to_backup_fp = list(generate_files_to_backup())
@@ -302,7 +387,8 @@ class Backup:
 
             # Attendre la fin du thread de logging
             log_thread.join()
-
+        if 'nextcloud_container_name' in self.d_yaml_databases[s_database_container_name] and self.o_docker.is_container_exist(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']):
+            self.o_docker.exec_command(self.o_docker.from_name_to_id(s_nextcloud_container_name), "nextcloud php occ maintenance:mode --off", "www-data")
         self.o_logger.info("Backup finished")
         return self.get_file_size_in_gb(self.s_bck_path + self.s_backup_filename)
 
