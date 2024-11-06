@@ -37,8 +37,12 @@ def main():
         common.infradmin_logs.O_LOGGER.info('Restore finished')
     
     end_time = time.time()
-    duration = end_time - start_time
-    common.infradmin_logs.O_LOGGER.info(f'Operation {args.operation} took {duration} seconds')
+    s_duration = end_time - start_time
+    
+    s_hours, s_remainder = divmod(s_duration, 3600)
+    s_minutes, s_seconds = divmod(s_remainder, 60)
+    
+    common.infradmin_logs.O_LOGGER.info(f'Operation {args.operation} took {s_hours} hours {s_minutes} minutes {s_seconds} seconds')
 
 if __name__ == "__main__":
     main()
