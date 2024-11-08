@@ -1,6 +1,5 @@
 from os import environ
 import docker
-from common.tools import load_yaml, write_json
 import common.infradmin_logs
 import common.traefik_management
 
@@ -16,9 +15,8 @@ class Docker:
         """
         l_containers_id = self.list_stopped_and_running_containers()
         l_containers_name = []
-        for s_container_id in l_containers_id:
-            s_container_name = self.from_id_to_name(s_container_id)
-            l_containers_name.append(s_container_name)
+        for o_container in l_containers_id:
+            l_containers_name.append(o_container.name)
         return l_containers_name
     
     def get_database_containers_name(self) -> list:
@@ -126,15 +124,4 @@ class Docker:
         l_labels = o_container.labels
         return l_labels
 
-    def get_all_containers_labels(self):
-        d_ret = {}
-        o_compose = Compose()
-        l_containers = o_compose.get_containers_name()
-        i_nb_containers = len(l_containers)
-        for i in range(i_nb_containers):
-            l_labels = self.get_labels_from_container(l_containers[i])
-            d_ret[i] = {
-                l_containers[i]: l_labels
-            }
-        return d_ret
 
