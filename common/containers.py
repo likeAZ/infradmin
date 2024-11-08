@@ -82,8 +82,7 @@ class Docker:
                     break
             if self.s_own_container_volume_source is None:
                 self.o_logger.error("Volume source for /usr/src/app/infradmin/data/ not found")
-        else:
-            return self.s_own_container_volume_source
+        return self.s_own_container_volume_source
     
     def get_volumes_for_container(self, s_container_name: str) -> list:
         """
