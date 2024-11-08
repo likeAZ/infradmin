@@ -7,6 +7,7 @@ class Docker:
     def __init__(self):
         self.o_logger = common.infradmin_logs.O_LOGGER
         self.o_docker = docker.from_env()
+        self.s_own_container_volume_source = None
 
     def get_containers_name(self) -> list:
         """
@@ -72,17 +73,17 @@ class Docker:
         Get the path of the volume of the container
         :return: path of the volume
         """
-        o_own_container = self.o_docker.containers.get(environ["HOSTNAME"])
-        l_own_container_volumes = self.get_volumes_for_container(o_own_container.name)
-        self.o_logger.info(f'volumes for {o_own_container.name} are : {l_own_container_volumes}')
-        s_own_container_volume_source = None
-        for s_own_container_volume in l_own_container_volumes:
-            if s_own_container_volume.split(':')[1] == '/usr/src/app/infradmin/data':
-                s_own_container_volume_source = s_own_container_volume.split(':')[0]
-                break
-        if s_own_container_volume_source is None:
-            self.o_logger.error("Volume source for /usr/src/app/infradmin/data/ not found")
-        return s_own_container_volume_source
+        if self.s_own_container_volume_source is None:
+            o_own_container = self.o_docker.containers.get(environ["HOSTNAME"])
+            l_own_container_volumes = self.get_volumes_for_container(o_own_container.name)
+            for s_own_container_volume in l_own_container_volumes:
+                if s_own_container_volume.split(':')[1] == '/usr/src/app/infradmin/data':
+                    self.s_own_container_volume_source = s_own_container_volume.split(':')[0]
+                    break
+            if self.s_own_container_volume_source is None:
+                self.o_logger.error("Volume source for /usr/src/app/infradmin/data/ not found")
+        else:
+            return self.s_own_container_volume_source
     
     def get_volumes_for_container(self, s_container_name: str) -> list:
         """

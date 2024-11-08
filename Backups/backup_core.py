@@ -309,8 +309,9 @@ class Backup:
             s_backup_path_container_side = s_database_backup_volume.split(":")[1]
             s_backup_path_host_side = s_database_backup_volume.split(":")[0]
             
-            self.o_logger.info("Deleting old database dumps")
-            os.remove(self.map_volume_path(s_backup_path_host_side) + "/*")
+            if os.path.exists(self.map_volume_path(s_backup_path_host_side)+"*"):
+                self.o_logger.info("Deleting old database dumps")
+                os.remove(self.map_volume_path(s_backup_path_host_side) + "*")
             
             if 'nextcloud_container_name' in self.d_yaml_databases[s_database_container_name] and self.o_docker.is_container_exist(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']):
                 self.o_logger.info(f"Putting {self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']} in maintenance mode")
