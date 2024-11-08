@@ -75,9 +75,13 @@ class Docker:
         o_own_container = self.o_docker.containers.get(environ["HOSTNAME"])
         l_own_container_volumes = self.get_volumes_for_container(o_own_container.name)
         self.o_logger.info(f'volumes for {o_own_container.name} are : {l_own_container_volumes}')
+        s_own_container_volume_source = None
         for s_own_container_volume in l_own_container_volumes:
             if s_own_container_volume.split(':')[1] == '/usr/src/app/infradmin/data/':
                 s_own_container_volume_source = s_own_container_volume.split(':')[0]
+                break
+        if s_own_container_volume_source is None:
+            raise ValueError("Volume source for not found")
         return s_own_container_volume_source
     
     def get_volumes_for_container(self, s_container_name: str) -> list:
