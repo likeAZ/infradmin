@@ -316,14 +316,14 @@ class Backup:
             if 'nextcloud_container_name' in self.d_yaml_databases[s_database_container_name] and self.o_docker.is_container_exist(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']):
                 self.o_logger.info(f"Putting {self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']} in maintenance mode")
                 s_nextcloud_container_name = self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']
-                self.o_docker.exec_command(self.o_docker.from_name_to_id(s_nextcloud_container_name), "nextcloud php occ maintenance:mode --on", "www-data")
+                self.o_docker.exec_command(self.o_docker.from_name_to_id(s_nextcloud_container_name), "php occ maintenance:mode --on", "www-data")
             
             s_type = self.o_docker.get_database_type(s_database_container_name)
             self.o_logger.info(f"Backing up {s_database_container_name} of type {s_type}")
             match s_type:
                 
                 case 'mariadb':
-                    s_backup_cmd = "/usr/bin/mariadb-dump -u root -p$\{MARIADB_ROOT_PASSWORD\} --all-databases > " + s_backup_path_container_side + datetime.datetime.now().strftime(self.s_date_format) + "-backup.sql"
+                    s_backup_cmd = "/usr/bin/mariadb-dump -u root -p$MARIADB_ROOT_PASSWORD --all-databases > " + s_backup_path_container_side + datetime.datetime.now().strftime(self.s_date_format) + "-backup.sql"
                     self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
                     
                     self.o_logger.info(f"{s_database_container_name} backuped in {self.map_volume_path(s_backup_path_host_side)}")
@@ -396,7 +396,7 @@ class Backup:
         for s_database_container_name in l_databases_container_name:
             if 'nextcloud_container_name' in self.d_yaml_databases[s_database_container_name] and self.o_docker.is_container_exist(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']):
                 self.o_logger.info(f"Disabling maintenance mode for {self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']}")
-                self.o_docker.exec_command(self.o_docker.from_name_to_id(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']), "nextcloud php occ maintenance:mode --off", "www-data")
+                self.o_docker.exec_command(self.o_docker.from_name_to_id(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']), "php occ maintenance:mode --off", "www-data")
         self.o_logger.info("Backup finished")
         return self.get_file_size_in_gb(self.s_bck_path + self.s_backup_filename)
 
