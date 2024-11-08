@@ -72,8 +72,8 @@ class Docker:
         Get the path of the volume of the container
         :return: path of the volume
         """
-        s_own_container_id = self.o_docker.containers.get(environ["HOSTNAME"]).id
-        l_own_container_volumes = self.get_volumes_for_container(s_own_container_id)
+        o_own_container = self.o_docker.containers.get(environ["HOSTNAME"])
+        l_own_container_volumes = self.get_volumes_for_container(o_own_container.name)
         for s_own_container_volume in l_own_container_volumes:
             if s_own_container_volume.split(':')[1] == '/usr/src/app/infradmin/data/':
                 s_own_container_volume_source = s_own_container_volume.split(':')[0]
