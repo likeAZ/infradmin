@@ -323,9 +323,9 @@ class Backup:
             match s_type:
                 
                 case 'mariadb':
-                    s_backup_cmd = "/usr/bin/mariadb-dump -u root -p$MARIADB_ROOT_PASSWORD --all-databases > " + s_backup_path_container_side + datetime.datetime.now().strftime(self.s_date_format) + "-backup.sql"
+                    s_backup_cmd = f"/bin/sh -c 'exec /usr/bin/mariadb-dump -u root -p$MARIADB_ROOT_PASSWORD --all-databases > {s_backup_path_container_side}{datetime.datetime.now().strftime(self.s_date_format)}-backup.sql'"
                     self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
-                    
+
                     self.o_logger.info(f"{s_database_container_name} backuped in {self.map_volume_path(s_backup_path_host_side)}")
 
                 case 'postgresql':
