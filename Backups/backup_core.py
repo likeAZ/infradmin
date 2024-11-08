@@ -326,6 +326,8 @@ class Backup:
                     s_previous_backup_state = self.o_docker.get_current_container_state(s_database_container_name)
                     if not s_previous_backup_state == 'running':
                         self.o_docker.start_container(s_database_container_name)
+                        self.o_logger.info(f"Wainting for {s_database_container_name} to be started")
+                        time.sleep(10)
                     
                     s_backup_cmd = f"/bin/sh -c 'exec /usr/bin/mariadb-dump -u root -p$MARIADB_ROOT_PASSWORD --all-databases > {s_backup_path_container_side}{datetime.datetime.now().strftime(self.s_date_format)}-backup.sql'"
                     self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
@@ -340,6 +342,8 @@ class Backup:
                     s_previous_backup_state = self.o_docker.get_current_container_state(s_database_container_name)
                     if not s_previous_backup_state == 'running':
                         self.o_docker.start_container(s_database_container_name)
+                        self.o_logger.info(f"Wainting for {s_database_container_name} to be started")
+                        time.sleep(10)
                     
                     s_backup_cmd = f"/usr/local/bin/pg_dumpall -U postgres > {s_backup_path_container_side}{datetime.datetime.now().strftime(self.s_date_format)}-backup.sql"
                     self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
