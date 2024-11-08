@@ -352,7 +352,7 @@ class Backup:
                         self.o_logger.info(f"Wainting for {s_database_container_name} to be started")
                         time.sleep(10)
                     
-                    container = self.o_docker.containers.get(self.o_docker.from_name_to_id(s_database_container_name))
+                    container = self.o_docker.get_a_container(s_database_container_name)
                     env_vars = container.attrs['Config']['Env']
                     postgres_user_exists = any(env_var.startswith("POSTGRES_USER=") for env_var in env_vars)
 

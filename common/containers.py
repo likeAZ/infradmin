@@ -9,6 +9,15 @@ class Docker:
         self.o_docker = docker.from_env()
         self.s_own_container_volume_source = None
 
+    def get_a_container(self, s_container_name: str) -> docker.models.containers.Container:
+        """
+        Get a container object
+        :param s_container_name: container name
+        :return: container object
+        """
+        o_container = self.o_docker.containers.get(s_container_name)
+        return o_container
+    
     def get_containers_name(self) -> list:
         """
         Get all containers name
