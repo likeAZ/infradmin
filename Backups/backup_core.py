@@ -313,6 +313,7 @@ class Backup:
                 if os.listdir(self.map_volume_path(s_backup_path_host_side)):
                     self.o_logger.info("Deleting old database dumps")
                     for s_file in os.listdir(self.map_volume_path(s_backup_path_host_side)):
+                        self.o_logger.info(f"Deleting {s_file}")
                         os.remove(os.path.join(self.map_volume_path(s_backup_path_host_side), s_file))
                 else:
                     self.o_logger.info("No old database dumps to delete")
@@ -341,7 +342,7 @@ class Backup:
                     self.o_logger.info(f"{s_database_container_name} backuped in {self.map_volume_path(s_backup_path_host_side)}")
 
                     if s_previous_backup_state == 'exited':
-                        self.log.info(f"Returning {s_database_container_name} to previous state")
+                        self.o_logger.info(f"Returning {s_database_container_name} to previous state")
                         self.o_docker.stop_container(s_database_container_name)
                         
                 case 'postgresql':
@@ -351,9 +352,17 @@ class Backup:
                         self.o_logger.info(f"Wainting for {s_database_container_name} to be started")
                         time.sleep(10)
                     
-                    s_backup_cmd = f"/bin/sh -c '/usr/local/bin/pg_dumpall -U $POSTGRES_USER > {s_backup_path_container_side}{datetime.datetime.now().strftime(self.s_date_format)}-backup.sql'"
-                    self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
-                    
+                    container = self.o_docker.containers.get(self.o_docker.from_name_to_id(s_database_container_name))
+                    env_vars = container.attrs['Config']['Env']
+                    postgres_user_exists = any(env_var.startswith("POSTGRES_USER=") for env_var in env_vars)
+
+                    if postgres_user_exists:
+                        s_backup_cmd = f"/bin/sh -c '/usr/local/bin/pg_dumpall -U $POSTGRES_USER > {s_backup_path_container_side}{datetime.datetime.now().strftime(self.s_date_format)}-backup.sql'"
+                        self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
+                    else:
+                        s_backup_cmd = f"/bin/sh -c '/usr/local/bin/pg_dumpall -U postgres > {s_backup_path_container_side}{datetime.datetime.now().strftime(self.s_date_format)}-backup.sql'"
+                        self.o_docker.exec_command(self.o_docker.from_name_to_id(s_database_container_name), s_backup_cmd)
+
                     self.o_logger.info(f"{s_database_container_name} backuped in {self.map_volume_path(s_backup_path_host_side)}")
                     
                     if s_previous_backup_state == 'exited':
