@@ -109,6 +109,20 @@ class Docker:
         s_container_id = o_container.id
         return s_container_id
 
+    def get_current_container_state(self, s_container_name: str) -> str:
+        o_container = self.o_docker.containers.get(s_container_name)
+        return o_container.status
+    
+    def start_container(self, s_container_name: str):
+        o_container = self.o_docker.containers.get(s_container_name)
+        o_container.start()
+        self.o_logger.info(f'{s_container_name} started')
+
+    def stop_container(self, s_container_name: str):
+        o_container = self.o_docker.containers.get(s_container_name)
+        o_container.stop()
+        self.o_logger.info(f'{s_container_name} stopped')
+    
     def exec_command(self, s_container_id: str, s_command: str, s_user: str = None):
         exec_create_params = {
         'container': s_container_id,
