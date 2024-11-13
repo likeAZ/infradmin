@@ -36,7 +36,7 @@ def main():
     charges = load_charges(yaml_file_path)
     common.infradmin_logs.O_LOGGER.info("Charges: ")
     for charge, amount in charges.items():
-        common.infradmin_logs.O_LOGGER.info(f"{charge}: {amount} euros")
+        common.infradmin_logs.O_LOGGER.info(f"  {charge}: {amount} euros")
     common.infradmin_logs.O_LOGGER.info("Is there any charge you want to add? (yes/no)")
     answer = input()
     if answer == 'yes':
