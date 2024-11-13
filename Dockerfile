@@ -1,7 +1,10 @@
 FROM python:3.11
 #FROM python:3.11-slim
+
 ENV APP_DIR=/usr/src/app/infradmin/
 WORKDIR ${APP_DIR}
+ENV PYTHONPATH=${APP_DIR}/common
+
 RUN apt-get update && apt-get install -y \
     rsync \
     && rm -rf /var/lib/apt/lists/*
