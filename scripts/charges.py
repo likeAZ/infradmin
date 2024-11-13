@@ -48,7 +48,7 @@ def main():
         charges = load_charges(yaml_file_path)
         common.infradmin_logs.O_LOGGER.info("Updated charges: ")
         for charge, amount in charges.items():
-            common.infradmin_logs.O_LOGGER.info(f"{charge}: {amount} euros")
+            common.infradmin_logs.O_LOGGER.info(f"  {charge}: {amount} euros")
     
     
     
