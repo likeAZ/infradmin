@@ -43,7 +43,7 @@ def main():
     charges = load_charges(yaml_file_path)
     common.infradmin_logs.O_LOGGER.info("Charges: ")
     for charge, amount in charges.items():
-        common.infradmin_logs.O_LOGGER.info(f"  {charge}: {amount} euros")
+        common.infradmin_logs.O_LOGGER.info(f"  - {charge}: {amount} euros")
     common.infradmin_logs.O_LOGGER.info("Is there any charge you want to change? (yes/no)")
     answer = input()
     if answer == 'yes':
@@ -58,7 +58,7 @@ def main():
         elif action == 'update':
             common.infradmin_logs.O_LOGGER.info("Which charge do you want to update? ")
             for charge in charges.keys():
-                common.infradmin_logs.O_LOGGER.info(f"  {charge}")
+                common.infradmin_logs.O_LOGGER.info(f"  - {charge}")
             choice = input()
             common.infradmin_logs.O_LOGGER.info("Enter the new charge amount: ")
             amount = float(input())
@@ -66,7 +66,7 @@ def main():
         elif action == 'delete':
             common.infradmin_logs.O_LOGGER.info("Which charge do you want to update? ")
             for charge in charges.keys():
-                common.infradmin_logs.O_LOGGER.info(f"  {charge}")
+                common.infradmin_logs.O_LOGGER.info(f"  - {charge}")
             choice = input()
             remove_charge(yaml_file_path, choice)
         else:
@@ -75,7 +75,7 @@ def main():
         charges = load_charges(yaml_file_path)
         common.infradmin_logs.O_LOGGER.info("Updated charges: ")
         for charge, amount in charges.items():
-            common.infradmin_logs.O_LOGGER.info(f"  {charge}: {amount} euros")
+            common.infradmin_logs.O_LOGGER.info(f"  - {charge}: {amount} euros")
     
     
     
