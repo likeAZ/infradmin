@@ -3,7 +3,6 @@ FROM python:3.11
 
 ENV APP_DIR=/usr/src/app/infradmin/
 WORKDIR ${APP_DIR}
-#ENV PYTHONPATH=${APP_DIR}/common
 
 RUN apt-get update && apt-get install -y \
     rsync \

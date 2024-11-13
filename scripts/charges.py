@@ -1,4 +1,9 @@
+import sys
+import os
 import yaml
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import common.infradmin_logs
 
 def load_charges(yaml_file):
