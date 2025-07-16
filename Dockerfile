@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 COPY conf/ conf/
 RUN chmod -R 744 scripts/
-CMD [ "python", "./main.py", "backup" ]
+CMD [ "python", "./main.py", "backup-databases" ]
