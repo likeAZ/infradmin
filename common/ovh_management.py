@@ -65,3 +65,105 @@ class Ovh:
             self.o_logger.error("Une erreur s'est produite :", e)
             return False
 
+    def create_a_record(self, s_domain_name: str, s_subdomain: str, s_ip_address: str, i_ttl: int = 3600):
+        """
+        Create an A record for a subdomain
+        :param s_domain_name: domain name
+        :param s_subdomain: subdomain name
+        :param s_ip_address: IP address
+        :param i_ttl: TTL in seconds
+        """
+        d_record_params = {
+            "subDomain": s_subdomain,
+            "target": s_ip_address,
+            "ttl": i_ttl,
+        }
+        self.o_logger.info(f'Creating A record {s_subdomain}.{s_domain_name} -> {s_ip_address}')
+        
+        try:
+            self.o_client.post(f'/domain/zone/{s_domain_name}/record', 
+                             fieldType='A', **d_record_params)
+            self.o_logger.info(f'A record {s_subdomain}.{s_domain_name} successfully created')
+        except Exception as e:
+            self.o_logger.error(f'Error creating A record: {e}')
+            raise
+
+    def update_a_record(self, s_domain_name: str, s_subdomain: str, s_ip_address: str, i_ttl: int = 3600):
+        """
+        Update an existing A record
+        :param s_domain_name: domain name
+        :param s_subdomain: subdomain name
+        :param s_ip_address: new IP address
+        :param i_ttl: TTL in seconds
+        """
+        try:
+            # Get existing A record
+            records = self.o_client.get(f'/domain/zone/{s_domain_name}/record', 
+                                      fieldType='A', subDomain=s_subdomain)
+            
+            if not records:
+                self.o_logger.warning(f'No A record found for {s_subdomain}.{s_domain_name}')
+                return False
+            
+            record_id = records[0]['id']
+            
+            # Update the record
+            self.o_client.put(f'/domain/zone/{s_domain_name}/record/{record_id}',
+                            target=s_ip_address, ttl=i_ttl)
+            
+            self.o_logger.info(f'A record {s_subdomain}.{s_domain_name} updated to {s_ip_address}')
+            return True
+            
+        except Exception as e:
+            self.o_logger.error(f'Error updating A record: {e}')
+            return False
+
+    def delete_a_record(self, s_domain_name: str, s_subdomain: str):
+        """
+        Delete an A record
+        :param s_domain_name: domain name
+        :param s_subdomain: subdomain name
+        """
+        try:
+            # Get A record ID
+            records = self.o_client.get(f'/domain/zone/{s_domain_name}/record', 
+                                      fieldType='A', subDomain=s_subdomain)
+            
+            for record in records:
+                record_id = record['id']
+                self.o_client.delete(f'/domain/zone/{s_domain_name}/record/{record_id}')
+                self.o_logger.info(f'A record {s_subdomain}.{s_domain_name} successfully deleted')
+                
+        except Exception as e:
+            self.o_logger.error(f'Error deleting A record: {e}')
+            raise
+
+    def refresh_zone(self, s_domain_name: str):
+        """
+        Refresh the DNS zone to apply changes
+        :param s_domain_name: domain name
+        """
+        try:
+            self.o_client.post(f'/domain/zone/{s_domain_name}/refresh')
+            self.o_logger.info(f'Zone {s_domain_name} refreshed successfully')
+        except Exception as e:
+            self.o_logger.error(f'Error refreshing zone {s_domain_name}: {e}')
+            raise
+
+    def list_records(self, s_domain_name: str, s_record_type: str = None):
+        """
+        List all records for a domain
+        :param s_domain_name: domain name
+        :param s_record_type: record type filter (A, CNAME, etc.)
+        :return: list of records
+        """
+        try:
+            params = {}
+            if s_record_type:
+                params['fieldType'] = s_record_type
+                
+            records = self.o_client.get(f'/domain/zone/{s_domain_name}/record', **params)
+            return records
+        except Exception as e:
+            self.o_logger.error(f'Error listing records for {s_domain_name}: {e}')
+            return []

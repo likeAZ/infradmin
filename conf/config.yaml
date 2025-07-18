@@ -1,3 +1,30 @@
 healthcheck:
   is_active: "True"
   url: "https://some/url"
+
+# DNS management configuration for local BIND server
+# All running containers are automatically added to DNS zones
+dns:
+  domain: "local.dev"  # Your local domain name
+  ttl: 300  # DNS record TTL in seconds
+  
+  # BIND configuration (container-based)
+  bind:
+    zone_file_path: "/etc/bind/zones"  # Path inside BIND container where zone files are stored
+    forward_zone_file: "db.local.dev"  # Forward zone file name
+    reverse_zone_file: "db.172.rev"  # Reverse zone file name
+    reverse_network: "172.0.0"  # Network for reverse DNS (e.g., 172.x.x.x networks)
+    bind_container_name: "bind9"  # Name of the BIND container
+    reload_command: "rndc reload"  # Command to reload BIND configuration
+    
+    # DHCP integration settings
+    dhcp_managed: true  # Set to true if ISC DHCP server manages forward zone via RNDC
+    update_forward_zone: false  # Set to true to force forward zone updates (risky with DHCP)
+    smart_sync: true  # Automatically add missing containers to forward zone via RNDC
+    
+    # Smart Sync Mode (RECOMMENDED when dhcp_managed=true):
+    # - Updates reverse zone files normally
+    # - Checks forward zone for missing container records
+    # - Adds missing containers via RNDC dynamic updates
+    # - Preserves existing DHCP-managed records
+    # - No conflicts with DHCP server operations

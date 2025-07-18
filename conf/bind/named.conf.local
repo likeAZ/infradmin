@@ -1,0 +1,40 @@
+# BIND named.conf.local configuration for container DNS management
+# This file should be mounted into the BIND container
+
+# Forward zone for local.dev
+zone "local.dev" {
+    type master;
+    file "/etc/bind/zones/db.local.dev";
+    allow-update { none; };
+    allow-query { any; };
+};
+
+# Reverse zone for 172.0.0.0/8 (Docker networks)
+zone "0.172.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.172.rev";
+    allow-update { none; };
+    allow-query { any; };
+};
+
+# Additional reverse zones for common Docker networks
+zone "18.172.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.172.rev";
+    allow-update { none; };
+    allow-query { any; };
+};
+
+zone "19.172.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.172.rev";
+    allow-update { none; };
+    allow-query { any; };
+};
+
+zone "20.172.in-addr.arpa" {
+    type master;
+    file "/etc/bind/zones/db.172.rev";
+    allow-update { none; };
+    allow-query { any; };
+};

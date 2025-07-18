@@ -1,0 +1,79 @@
+# Example Docker Compose configuration for local DNS management
+# All containers are automatically added to DNS - no labels required
+
+version: '3.8'
+
+services:
+  # BIND DNS server container
+  bind9:
+    image: internetsystemsconsortium/bind9:9.18
+    container_name: bind9
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "953:953/tcp"  # RNDC port
+    volumes:
+      # Mount zone files directory
+      - ./bind/zones:/etc/bind/zones:rw
+      # Mount BIND configuration
+      - ./bind/named.conf:/etc/bind/named.conf:ro
+      - ./bind/named.conf.local:/etc/bind/named.conf.local:ro
+      # Mount RNDC key for remote management
+      - ./bind/rndc.key:/etc/bind/rndc.key:ro
+    networks:
+      - infradmin_network
+
+  # Infradmin container for DNS management
+  infradmin:
+    build: .
+    container_name: infradmin
+    restart: unless-stopped
+    volumes:
+      # Mount Docker socket to manage other containers
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount BIND zones directory (same as BIND container)
+      - ./bind/zones:/etc/bind/zones:rw
+      # Mount infradmin data
+      - ./data:/usr/src/app/infradmin/data:rw
+    networks:
+      - infradmin_network
+    # Cron job will be configured on the host to run DNS updates
+    command: ["tail", "-f", "/dev/null"]  # Keep container running
+
+  # Example web application (automatically added to DNS as webapp.local.dev)
+  webapp:
+    image: nginx:latest
+    container_name: webapp
+    networks:
+      - infradmin_network
+
+  # Example API service (automatically added to DNS as api.local.dev)
+  api:
+    image: node:latest
+    container_name: api
+    command: ["node", "-e", "require('http').createServer((req,res)=>res.end('API')).listen(3000)"]
+    networks:
+      - infradmin_network
+
+  # Database container (automatically added to DNS as database.local.dev)
+  database:
+    image: postgres:13
+    container_name: database
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    networks:
+      - infradmin_network
+
+  # Cache service (automatically added to DNS as cache.local.dev)
+  cache:
+    image: redis:latest
+    container_name: cache
+    networks:
+      - infradmin_network
+
+networks:
+  infradmin_network:
+    driver: bridge
