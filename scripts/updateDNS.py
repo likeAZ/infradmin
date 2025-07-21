@@ -167,6 +167,37 @@ EOF"""
             self.o_logger.error(f"Error adding A record via RNDC: {e}")
             return False
     
+    def remove_container_from_forward_zone_via_rndc(self, container_name: str) -> bool:
+        """Remove a container A record from forward zone via RNDC dynamic update"""
+        try:
+            domain = self.config['dns']['domain']
+            
+            # Create nsupdate script
+            nsupdate_script = f"""#!/bin/bash
+cat << EOF | nsupdate -l
+server 127.0.0.1
+update delete {container_name}.{domain}. A
+send
+EOF"""
+            
+            # Write script to temporary file and execute
+            script_path = f"/tmp/remove_{container_name}.sh"
+            self.execute_in_bind_container(f"echo '{nsupdate_script}' > {script_path}")
+            self.execute_in_bind_container(f"chmod +x {script_path}")
+            
+            if self.execute_in_bind_container(f"bash {script_path}"):
+                self.execute_in_bind_container(f"rm -f {script_path}")  # Cleanup
+                self.o_logger.info(f"Removed A record via RNDC: {container_name}.{domain}")
+                return True
+            else:
+                self.execute_in_bind_container(f"rm -f {script_path}")  # Cleanup
+                self.o_logger.error(f"Failed to remove A record via RNDC: {container_name}.{domain}")
+                return False
+                
+        except Exception as e:
+            self.o_logger.error(f"Error removing A record via RNDC: {e}")
+            return False
+    
     def execute_in_bind_container(self, command: str) -> bool:
         """Execute a command in the BIND container"""
         try:
@@ -501,6 +532,9 @@ $TTL {ttl}
 
 def main():
     """Main function with CLI interface"""
+    # Initialize logging first
+    common.infradmin_logs.O_LOGGER = common.infradmin_logs.init_logging('updateDNS', False)
+    
     parser = argparse.ArgumentParser(description='Dynamic DNS updater for Docker containers')
     parser.add_argument('--config', '-c', help='Path to configuration file')
     parser.add_argument('--sync', '-s', action='store_true', help='Sync DNS records for all running containers')
@@ -511,8 +545,13 @@ def main():
     parser.add_argument('--status', action='store_true', help='Show DNS management configuration and mode')
     parser.add_argument('--add-container', help='Add specific container to DNS via RNDC (format: container_name)')
     parser.add_argument('--remove-container', help='Remove specific container from DNS via RNDC (format: container_name)')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     
     args = parser.parse_args()
+    
+    # Re-initialize logging with debug flag if specified
+    if args.debug:
+        common.infradmin_logs.O_LOGGER = common.infradmin_logs.init_logging('updateDNS', True)
     
     # Initialize DNS updater
     updater = DNSUpdater(args.config)
