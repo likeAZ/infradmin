@@ -141,25 +141,17 @@ class DNSUpdater:
             domain = self.config['dns']['domain']
             ttl = self.config['dns'].get('ttl', 300)
             
-            # Create nsupdate script
-            nsupdate_script = f"""#!/bin/bash
-cat << EOF | nsupdate -l
+            # Create nsupdate command directly (no script file needed)
+            nsupdate_command = f"""nsupdate -l << 'EOF'
 server 127.0.0.1
 update add {container_name}.{domain}. {ttl} A {ip_address}
 send
 EOF"""
             
-            # Write script to temporary file and execute
-            script_path = f"/tmp/add_{container_name}.sh"
-            self.execute_in_bind_container(f"echo '{nsupdate_script}' > {script_path}")
-            self.execute_in_bind_container(f"chmod +x {script_path}")
-            
-            if self.execute_in_bind_container(f"bash {script_path}"):
-                self.execute_in_bind_container(f"rm -f {script_path}")  # Cleanup
+            if self.execute_in_bind_container(nsupdate_command):
                 self.o_logger.info(f"Added A record via RNDC: {container_name}.{domain} -> {ip_address}")
                 return True
             else:
-                self.execute_in_bind_container(f"rm -f {script_path}")  # Cleanup
                 self.o_logger.error(f"Failed to add A record via RNDC: {container_name}.{domain}")
                 return False
                 
@@ -172,25 +164,17 @@ EOF"""
         try:
             domain = self.config['dns']['domain']
             
-            # Create nsupdate script
-            nsupdate_script = f"""#!/bin/bash
-cat << EOF | nsupdate -l
+            # Create nsupdate command directly (no script file needed)
+            nsupdate_command = f"""nsupdate -l << 'EOF'
 server 127.0.0.1
 update delete {container_name}.{domain}. A
 send
 EOF"""
             
-            # Write script to temporary file and execute
-            script_path = f"/tmp/remove_{container_name}.sh"
-            self.execute_in_bind_container(f"echo '{nsupdate_script}' > {script_path}")
-            self.execute_in_bind_container(f"chmod +x {script_path}")
-            
-            if self.execute_in_bind_container(f"bash {script_path}"):
-                self.execute_in_bind_container(f"rm -f {script_path}")  # Cleanup
+            if self.execute_in_bind_container(nsupdate_command):
                 self.o_logger.info(f"Removed A record via RNDC: {container_name}.{domain}")
                 return True
             else:
-                self.execute_in_bind_container(f"rm -f {script_path}")  # Cleanup
                 self.o_logger.error(f"Failed to remove A record via RNDC: {container_name}.{domain}")
                 return False
                 
