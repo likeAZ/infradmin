@@ -264,6 +264,243 @@ send
             self.o_logger.debug(f"nsupdate error: {e}")
             return False
 
+    def add_container_to_reverse_zone_via_nsupdate(self, container_name: str, ip_address: str) -> bool:
+        """Add a container PTR record to reverse zone via nsupdate dynamic update"""
+        try:
+            domain = self.config['dns']['domain']
+            ttl = self.config['dns'].get('ttl', 300)
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            reverse_network = bind_config.get('reverse_network', '172.0.0')
+            
+            # Check if IP is in our reverse network
+            if not ip_address.startswith(reverse_network):
+                self.o_logger.debug(f"IP {ip_address} not in reverse network {reverse_network}, skipping PTR record")
+                return True
+            
+            # Use nsupdate for dynamic DNS updates
+            if self._try_nsupdate_add_ptr(container_name, domain, ttl, ip_address, reverse_network):
+                return True
+            
+            # Fallback to logging if nsupdate fails
+            self.o_logger.error(f"Failed to add PTR record for {container_name} ({ip_address})")
+            self.o_logger.error("nsupdate failed - check DNS server configuration and key authentication")
+            return False
+                
+        except Exception as e:
+            self.o_logger.error(f"Error in add_container_to_reverse_zone_via_nsupdate: {e}")
+            return False
+
+    def remove_container_from_reverse_zone_via_nsupdate(self, container_name: str, ip_address: str) -> bool:
+        """Remove a container PTR record from reverse zone via nsupdate dynamic update"""
+        try:
+            domain = self.config['dns']['domain']
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            reverse_network = bind_config.get('reverse_network', '172.0.0')
+            
+            # Check if IP is in our reverse network
+            if not ip_address.startswith(reverse_network):
+                self.o_logger.debug(f"IP {ip_address} not in reverse network {reverse_network}, skipping PTR record removal")
+                return True
+            
+            # Use nsupdate for dynamic DNS updates
+            if self._try_nsupdate_remove_ptr(container_name, domain, ip_address, reverse_network):
+                return True
+            
+            # Fallback to logging if nsupdate fails
+            self.o_logger.error(f"Failed to remove PTR record for {container_name} ({ip_address})")
+            self.o_logger.error("nsupdate failed - check DNS server configuration and key authentication")
+            return False
+                
+        except Exception as e:
+            self.o_logger.error(f"Error in remove_container_from_reverse_zone_via_nsupdate: {e}")
+            return False
+
+    def _try_nsupdate_add_ptr(self, container_name: str, domain: str, ttl: int, ip_address: str, reverse_network: str) -> bool:
+        """Try to add PTR record using nsupdate"""
+        try:
+            import subprocess
+            
+            # Calculate reverse DNS entry
+            ip_parts = ip_address.split('.')
+            if len(ip_parts) != 4:
+                return False
+            
+            # Get the last octet(s) for the record name based on network
+            network_parts = reverse_network.split('.')
+            record_octets = ip_parts[len(network_parts):]
+            record_name = '.'.join(reversed(record_octets))
+            
+            # Create reverse zone name (e.g., 0.0.172.in-addr.arpa)
+            reverse_zone_parts = reversed(network_parts)
+            reverse_zone = f"{'.'.join(reverse_zone_parts)}.in-addr.arpa"
+            
+            # Get DNS server IP and key configuration
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            server_ip = bind_config.get('server_ip', '127.0.0.1')
+            rndc_key_config = bind_config.get('rndc_key', {})
+            
+            # Build nsupdate command with key authentication
+            nsupdate_cmd = ['nsupdate']
+            
+            # Add key file if configured and exists
+            key_file = rndc_key_config.get('key_file')
+            if key_file and os.path.exists(key_file):
+                nsupdate_cmd.extend(['-k', key_file])
+                self.o_logger.debug(f"Using RNDC key file: {key_file}")
+            else:
+                # Try local update without key (less secure)
+                nsupdate_cmd.append('-l')
+                if key_file:
+                    self.o_logger.warning(f"RNDC key file not found: {key_file}, falling back to local update")
+                else:
+                    self.o_logger.debug("No RNDC key file configured, using local update")
+            
+            # Create nsupdate commands for PTR record
+            update_commands = f"""server {server_ip}
+update add {record_name}.{reverse_zone}. {ttl} PTR {container_name}.{domain}.
+send
+"""
+            
+            # Execute nsupdate
+            result = subprocess.run(
+                nsupdate_cmd,
+                input=update_commands,
+                text=True,
+                capture_output=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                auth_method = "key-authenticated" if key_file and os.path.exists(key_file) else "local"
+                self.o_logger.info(f"Added PTR record via nsupdate ({auth_method}): {record_name}.{reverse_zone} -> {container_name}.{domain} (server: {server_ip})")
+                return True
+            else:
+                self.o_logger.warning(f"nsupdate PTR failed: {result.stderr}")
+                return False
+                
+        except FileNotFoundError:
+            self.o_logger.debug("nsupdate not found for PTR record")
+            return False
+        except Exception as e:
+            self.o_logger.debug(f"nsupdate PTR error: {e}")
+            return False
+
+    def _try_nsupdate_remove_ptr(self, container_name: str, domain: str, ip_address: str, reverse_network: str) -> bool:
+        """Try to remove PTR record using nsupdate"""
+        try:
+            import subprocess
+            
+            # Calculate reverse DNS entry
+            ip_parts = ip_address.split('.')
+            if len(ip_parts) != 4:
+                return False
+            
+            # Get the last octet(s) for the record name based on network
+            network_parts = reverse_network.split('.')
+            record_octets = ip_parts[len(network_parts):]
+            record_name = '.'.join(reversed(record_octets))
+            
+            # Create reverse zone name (e.g., 0.0.172.in-addr.arpa)
+            reverse_zone_parts = reversed(network_parts)
+            reverse_zone = f"{'.'.join(reverse_zone_parts)}.in-addr.arpa"
+            
+            # Get DNS server IP and key configuration
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            server_ip = bind_config.get('server_ip', '127.0.0.1')
+            rndc_key_config = bind_config.get('rndc_key', {})
+            
+            # Build nsupdate command with key authentication
+            nsupdate_cmd = ['nsupdate']
+            
+            # Add key file if configured and exists
+            key_file = rndc_key_config.get('key_file')
+            if key_file and os.path.exists(key_file):
+                nsupdate_cmd.extend(['-k', key_file])
+                self.o_logger.debug(f"Using RNDC key file: {key_file}")
+            else:
+                # Try local update without key (less secure)
+                nsupdate_cmd.append('-l')
+                if key_file:
+                    self.o_logger.warning(f"RNDC key file not found: {key_file}, falling back to local update")
+                else:
+                    self.o_logger.debug("No RNDC key file configured, using local update")
+            
+            # Create nsupdate commands for PTR record removal
+            update_commands = f"""server {server_ip}
+update delete {record_name}.{reverse_zone}. PTR
+send
+"""
+            
+            # Execute nsupdate
+            result = subprocess.run(
+                nsupdate_cmd,
+                input=update_commands,
+                text=True,
+                capture_output=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                auth_method = "key-authenticated" if key_file and os.path.exists(key_file) else "local"
+                self.o_logger.info(f"Removed PTR record via nsupdate ({auth_method}): {record_name}.{reverse_zone} (server: {server_ip})")
+                return True
+            else:
+                self.o_logger.warning(f"nsupdate PTR removal failed: {result.stderr}")
+                return False
+                
+        except FileNotFoundError:
+            self.o_logger.debug("nsupdate not found for PTR record removal")
+            return False
+        except Exception as e:
+            self.o_logger.debug(f"nsupdate PTR removal error: {e}")
+            return False
+
+    def add_container_to_dns(self, container_name: str, ip_address: str) -> bool:
+        """Add container to both forward and reverse DNS zones via nsupdate"""
+        try:
+            success_forward = self.add_container_to_forward_zone_via_nsupdate(container_name, ip_address)
+            success_reverse = self.add_container_to_reverse_zone_via_nsupdate(container_name, ip_address)
+            
+            if success_forward and success_reverse:
+                self.o_logger.info(f"Successfully added {container_name} to both forward and reverse DNS")
+                return True
+            elif success_forward:
+                self.o_logger.warning(f"Added {container_name} to forward DNS only (reverse failed)")
+                return True  # Partial success is still useful
+            elif success_reverse:
+                self.o_logger.warning(f"Added {container_name} to reverse DNS only (forward failed)")
+                return True  # Partial success is still useful
+            else:
+                self.o_logger.error(f"Failed to add {container_name} to both forward and reverse DNS")
+                return False
+                
+        except Exception as e:
+            self.o_logger.error(f"Error adding container {container_name} to DNS: {e}")
+            return False
+
+    def remove_container_from_dns(self, container_name: str, ip_address: str) -> bool:
+        """Remove container from both forward and reverse DNS zones via nsupdate"""
+        try:
+            success_forward = self.remove_container_from_forward_zone_via_nsupdate(container_name)
+            success_reverse = self.remove_container_from_reverse_zone_via_nsupdate(container_name, ip_address)
+            
+            if success_forward and success_reverse:
+                self.o_logger.info(f"Successfully removed {container_name} from both forward and reverse DNS")
+                return True
+            elif success_forward:
+                self.o_logger.warning(f"Removed {container_name} from forward DNS only (reverse failed)")
+                return True  # Partial success is still useful
+            elif success_reverse:
+                self.o_logger.warning(f"Removed {container_name} from reverse DNS only (forward failed)")
+                return True  # Partial success is still useful
+            else:
+                self.o_logger.error(f"Failed to remove {container_name} from both forward and reverse DNS")
+                return False
+                
+        except Exception as e:
+            self.o_logger.error(f"Error removing container {container_name} from DNS: {e}")
+            return False
+
     
     def execute_in_bind_container(self, command: str) -> bool:
         """Execute a command in the BIND container"""
@@ -307,7 +544,7 @@ send
             return False
     
     def sync_missing_containers_to_forward_zone(self, container_ips: Dict[str, str]) -> bool:
-        """Add only missing containers to forward zone via RNDC"""
+        """Add missing containers to both forward and reverse zones via nsupdate"""
         try:
             domain = self.config['dns']['domain']
             added_count = 0
@@ -315,19 +552,19 @@ send
             self.o_logger.info(f"Checking {len(container_ips)} containers for missing DNS records...")
             
             for container_name, ip_address in container_ips.items():
-                # Add container via nsupdate (nsupdate will handle duplicates gracefully)
+                # Add container to both forward and reverse zones
                 self.o_logger.info(f"Adding/updating container in DNS: {container_name}.{domain} -> {ip_address}")
                 
-                if self.add_container_to_forward_zone_via_nsupdate(container_name, ip_address):
+                if self.add_container_to_dns(container_name, ip_address):
                     added_count += 1
                 else:
                     self.o_logger.warning(f"Failed to add/update container {container_name} in DNS")
             
-            self.o_logger.info(f"Forward zone sync complete: {added_count} containers processed")
+            self.o_logger.info(f"DNS sync complete: {added_count} containers processed")
             return True
             
         except Exception as e:
-            self.o_logger.error(f"Error syncing containers to forward zone: {e}")
+            self.o_logger.error(f"Error syncing containers to DNS: {e}")
             return False
     
     def generate_bind_zone_file(self, container_ips: Dict[str, str]) -> str:
@@ -534,18 +771,18 @@ $TTL {ttl}
             success = True
             
             if dhcp_managed:
-                self.o_logger.info("DHCP-managed mode: Updating reverse zone and syncing missing containers to forward zone")
+                self.o_logger.info("DHCP-managed mode: Updating reverse zone file and syncing containers to both zones via nsupdate")
                 
-                # Always update reverse zone
+                # Always update reverse zone file
                 if not self.update_reverse_zone_only(container_ips):
                     success = False
                 
-                # Smart sync: Add missing containers to forward zone via RNDC
+                # Smart sync: Add missing containers to both forward and reverse zones via nsupdate
                 if smart_sync:
                     if not self.sync_missing_containers_to_forward_zone(container_ips):
                         success = False
                 else:
-                    self.o_logger.info("Smart sync disabled - not updating forward zone")
+                    self.o_logger.info("Smart sync disabled - not updating DNS records dynamically")
                     
                 return success
             else:
@@ -607,8 +844,8 @@ def main():
     parser.add_argument('--list', '-l', action='store_true', help='List containers and their IPs')
     parser.add_argument('--list-dns', '-d', action='store_true', help='List all containers that will be added to DNS')
     parser.add_argument('--status', action='store_true', help='Show DNS management configuration and mode')
-    parser.add_argument('--add-container', help='Add specific container to DNS via nsupdate (format: container_name)')
-    parser.add_argument('--remove-container', help='Remove specific container from DNS via nsupdate (format: container_name)')
+    parser.add_argument('--add-container', help='Add specific container to both forward and reverse DNS via nsupdate (format: container_name)')
+    parser.add_argument('--remove-container', help='Remove specific container from both forward and reverse DNS via nsupdate (format: container_name)')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     
     args = parser.parse_args()
@@ -661,7 +898,8 @@ def main():
             print("\nMode: DHCP-Safe Mode with Smart Sync (RECOMMENDED)")
             print("- Reverse zone files are updated")
             print("- Forward zone managed by DHCP server")
-            print("- Missing containers automatically added via nsupdate")
+            print("- Missing containers automatically added to both zones via nsupdate")
+            print("- Complete A and PTR record management")
             print("- No conflicts with DHCP dynamic updates")
         elif dhcp_managed and not update_forward_zone and not smart_sync:
             print("\nMode: DHCP-Safe Mode (Conservative)")
@@ -675,23 +913,30 @@ def main():
         else:
             print("\nMode: Full DNS Management")
             print("- Both forward and reverse zones updated")
+            print("- Complete A and PTR record management")
             print("- No DHCP conflicts")
     
     elif args.add_container:
         container_name = args.add_container
         container_ip = updater.get_container_ip(container_name)
         if container_ip:
-            print(f"Adding {container_name} ({container_ip}) to DNS via nsupdate...")
-            success = updater.add_container_to_forward_zone_via_nsupdate(container_name, container_ip)
+            print(f"Adding {container_name} ({container_ip}) to both forward and reverse DNS via nsupdate...")
+            success = updater.add_container_to_dns(container_name, container_ip)
             print("Container added successfully" if success else "Failed to add container")
         else:
             print(f"Container '{container_name}' not found or has no IP")
     
     elif args.remove_container:
         container_name = args.remove_container
-        print(f"Removing {container_name} from DNS via nsupdate...")
-        success = updater.remove_container_from_forward_zone_via_nsupdate(container_name)
-        print("Container removed successfully" if success else "Failed to remove container")
+        container_ip = updater.get_container_ip(container_name)
+        if container_ip:
+            print(f"Removing {container_name} ({container_ip}) from both forward and reverse DNS via nsupdate...")
+            success = updater.remove_container_from_dns(container_name, container_ip)
+            print("Container removed successfully" if success else "Failed to remove container")
+        else:
+            print(f"Container '{container_name}' not found or has no IP - attempting removal anyway...")
+            success = updater.remove_container_from_forward_zone_via_nsupdate(container_name)
+            print("Container removed from forward DNS" if success else "Failed to remove container")
     
     else:
         parser.print_help()
