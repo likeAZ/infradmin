@@ -47,7 +47,8 @@ class DNSUpdater:
                     'domain': 'local.dev',
                     'ttl': 300,
                     'bind': {
-                        'zone_file_path': '/etc/bind/zones',
+                        'zone_file_path': '/etc/bind/zones',  # Path inside BIND container
+                        'infradmin_zone_path': '/shared/bind/zones',  # Path inside infradmin container (shared volume)
                         'forward_zone_file': 'db.local.dev',
                         'reverse_zone_file': 'db.172.rev',
                         'reverse_network': '172.0.0',  # Network for reverse DNS (172.x.x.x)
@@ -112,11 +113,6 @@ class DNSUpdater:
             self.o_logger.error(f"Error getting container IPs: {e}")
         
         return container_ips
-    
-    def filter_containers_with_dns_labels(self) -> Dict[str, Tuple[str, str]]:
-        """Get containers that have DNS management labels - DEPRECATED, keeping for compatibility"""
-        self.o_logger.warning("filter_containers_with_dns_labels is deprecated - all containers are now included automatically")
-        return self.get_all_containers_for_dns()
     
     def get_all_containers_for_dns(self) -> Dict[str, Tuple[str, str]]:
         """Get all running containers for DNS management (no labels required)"""
@@ -321,34 +317,54 @@ $TTL {ttl}
         return zone_content
     
     def write_zone_file_to_bind_container(self, zone_content: str, zone_file_name: str) -> bool:
-        """Write zone file content to the BIND container via volume mount"""
+        """Write zone file content to the BIND container via shared volume mount"""
         try:
             bind_config = self.config.get('dns', {}).get('bind', {})
-            zone_file_path = bind_config.get('zone_file_path', '/etc/bind/zones')
             
-            # Get the volume mount path on the host
-            bind_container_name = bind_config.get('bind_container_name', 'bind9')
-            volumes = self.o_docker.get_volumes_for_container(bind_container_name)
+            # Use mounted volume path within the infradmin container
+            # This should be configured to mount the same volume as BIND's zone directory
+            infradmin_zone_path = bind_config.get('infradmin_zone_path', '/shared/bind/zones')
             
-            host_zone_path = None
-            for volume in volumes:
-                volume_parts = volume.split(':')
-                if len(volume_parts) >= 2 and volume_parts[1] == zone_file_path.rstrip('/'):
-                    host_zone_path = volume_parts[0]
-                    break
-            
-            if not host_zone_path:
-                self.o_logger.error(f"Could not find volume mount for {zone_file_path} in BIND container")
+            # Check if the mounted directory exists and is writable
+            if not os.path.exists(infradmin_zone_path):
+                self.o_logger.error(f"BIND zones mount path not found in infradmin container: {infradmin_zone_path}")
+                self.o_logger.error("Ensure the BIND zones volume is mounted to infradmin container")
                 return False
             
-            # Write zone file to host path (which is mounted in container)
-            full_zone_file_path = os.path.join(host_zone_path, zone_file_name)
+            if not os.access(infradmin_zone_path, os.W_OK):
+                self.o_logger.error(f"No write permission to BIND zones mount path: {infradmin_zone_path}")
+                return False
             
-            with open(full_zone_file_path, 'w') as f:
-                f.write(zone_content)
+            # Construct the full path for the zone file
+            full_zone_file_path = os.path.join(infradmin_zone_path, zone_file_name)
             
-            self.o_logger.info(f"Updated BIND zone file: {full_zone_file_path}")
-            return True
+            # Write zone file atomically using a temporary file
+            temp_file_path = f"{full_zone_file_path}.tmp"
+            
+            try:
+                # Write to temporary file first
+                with open(temp_file_path, 'w', encoding='utf-8') as f:
+                    f.write(zone_content)
+                    f.flush()  # Ensure content is written
+                    os.fsync(f.fileno())  # Force write to disk
+                
+                # Atomically move temp file to final location
+                os.rename(temp_file_path, full_zone_file_path)
+                
+                # Set proper permissions (readable by BIND)
+                os.chmod(full_zone_file_path, 0o644)
+                
+                self.o_logger.info(f"Successfully updated BIND zone file: {full_zone_file_path}")
+                return True
+                
+            except OSError as e:
+                # Cleanup temp file if it exists
+                if os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                    except OSError:
+                        pass
+                raise e
             
         except Exception as e:
             self.o_logger.error(f"Error writing zone file to BIND container: {e}")
