@@ -330,12 +330,17 @@ send
             record_octets = ip_parts[len(network_parts):]
             record_name = '.'.join(reversed(record_octets))
             
-            # Create reverse zone name (e.g., 0.0.172.in-addr.arpa)
-            reverse_zone_parts = reversed(network_parts)
-            reverse_zone = f"{'.'.join(reverse_zone_parts)}.in-addr.arpa"
+            # Use the reverse zone file name from config instead of calculating
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            reverse_zone_file = bind_config.get('reverse_zone_file', 'db.172.rev')
+            
+            # Extract zone name from reverse zone file (remove 'db.' prefix if present)
+            if reverse_zone_file.startswith('db.'):
+                reverse_zone = reverse_zone_file[3:]  # Remove 'db.' prefix
+            else:
+                reverse_zone = reverse_zone_file
             
             # Get DNS server IP and key configuration
-            bind_config = self.config.get('dns', {}).get('bind', {})
             server_ip = bind_config.get('server_ip', '127.0.0.1')
             rndc_key_config = bind_config.get('rndc_key', {})
             
@@ -400,12 +405,17 @@ send
             record_octets = ip_parts[len(network_parts):]
             record_name = '.'.join(reversed(record_octets))
             
-            # Create reverse zone name (e.g., 0.0.172.in-addr.arpa)
-            reverse_zone_parts = reversed(network_parts)
-            reverse_zone = f"{'.'.join(reverse_zone_parts)}.in-addr.arpa"
+            # Use the reverse zone file name from config instead of calculating
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            reverse_zone_file = bind_config.get('reverse_zone_file', 'db.172.rev')
+            
+            # Extract zone name from reverse zone file (remove 'db.' prefix if present)
+            if reverse_zone_file.startswith('db.'):
+                reverse_zone = reverse_zone_file[3:]  # Remove 'db.' prefix
+            else:
+                reverse_zone = reverse_zone_file
             
             # Get DNS server IP and key configuration
-            bind_config = self.config.get('dns', {}).get('bind', {})
             server_ip = bind_config.get('server_ip', '127.0.0.1')
             rndc_key_config = bind_config.get('rndc_key', {})
             
@@ -455,14 +465,146 @@ send
             self.o_logger.debug(f"nsupdate PTR removal error: {e}")
             return False
 
-    def add_container_to_dns(self, container_name: str, ip_address: str) -> bool:
-        """Add container to both forward and reverse DNS zones via nsupdate"""
+    def check_dns_record_exists(self, container_name: str, ip_address: str) -> tuple[bool, bool]:
+        """Check if both A and PTR records exist for a container
+        
+        Returns:
+            tuple: (a_record_exists, ptr_record_exists)
+        """
         try:
-            success_forward = self.add_container_to_forward_zone_via_nsupdate(container_name, ip_address)
-            success_reverse = self.add_container_to_reverse_zone_via_nsupdate(container_name, ip_address)
+            domain = self.config['dns']['domain']
+            
+            # Check A record existence
+            a_exists = self._check_a_record_exists(container_name, domain)
+            
+            # Check PTR record existence
+            ptr_exists = self._check_ptr_record_exists(container_name, domain, ip_address)
+            
+            return (a_exists, ptr_exists)
+            
+        except Exception as e:
+            self.o_logger.debug(f"Error checking DNS record existence: {e}")
+            return (False, False)
+
+    def _check_a_record_exists(self, container_name: str, domain: str) -> bool:
+        """Check if A record exists using nslookup or dig"""
+        try:
+            import subprocess
+            
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            server_ip = bind_config.get('server_ip', '127.0.0.1')
+            
+            # Try using nslookup first
+            try:
+                result = subprocess.run(
+                    ['nslookup', f'{container_name}.{domain}', server_ip],
+                    capture_output=True,
+                    timeout=10,
+                    text=True
+                )
+                
+                if result.returncode == 0 and 'Address:' in result.stdout:
+                    self.o_logger.debug(f"A record exists for {container_name}.{domain}")
+                    return True
+            except FileNotFoundError:
+                pass
+            
+            # Try using dig as fallback
+            try:
+                result = subprocess.run(
+                    ['dig', '+short', f'{container_name}.{domain}', '@' + server_ip],
+                    capture_output=True,
+                    timeout=10,
+                    text=True
+                )
+                
+                if result.returncode == 0 and result.stdout.strip():
+                    self.o_logger.debug(f"A record exists for {container_name}.{domain}")
+                    return True
+            except FileNotFoundError:
+                pass
+            
+            self.o_logger.debug(f"A record does not exist for {container_name}.{domain}")
+            return False
+            
+        except Exception as e:
+            self.o_logger.debug(f"Error checking A record: {e}")
+            return False
+
+    def _check_ptr_record_exists(self, container_name: str, domain: str, ip_address: str) -> bool:
+        """Check if PTR record exists using nslookup or dig"""
+        try:
+            import subprocess
+            
+            bind_config = self.config.get('dns', {}).get('bind', {})
+            server_ip = bind_config.get('server_ip', '127.0.0.1')
+            
+            # Try using nslookup first
+            try:
+                result = subprocess.run(
+                    ['nslookup', ip_address, server_ip],
+                    capture_output=True,
+                    timeout=10,
+                    text=True
+                )
+                
+                if result.returncode == 0 and f'{container_name}.{domain}' in result.stdout:
+                    self.o_logger.debug(f"PTR record exists for {ip_address} -> {container_name}.{domain}")
+                    return True
+            except FileNotFoundError:
+                pass
+            
+            # Try using dig as fallback
+            try:
+                result = subprocess.run(
+                    ['dig', '+short', '-x', ip_address, '@' + server_ip],
+                    capture_output=True,
+                    timeout=10,
+                    text=True
+                )
+                
+                if result.returncode == 0 and f'{container_name}.{domain}' in result.stdout:
+                    self.o_logger.debug(f"PTR record exists for {ip_address} -> {container_name}.{domain}")
+                    return True
+            except FileNotFoundError:
+                pass
+            
+            self.o_logger.debug(f"PTR record does not exist for {ip_address}")
+            return False
+            
+        except Exception as e:
+            self.o_logger.debug(f"Error checking PTR record: {e}")
+            return False
+
+    def add_container_to_dns(self, container_name: str, ip_address: str) -> bool:
+        """Add container to both forward and reverse DNS zones via nsupdate (with existence check)"""
+        try:
+            # Check if records already exist
+            a_exists, ptr_exists = self.check_dns_record_exists(container_name, ip_address)
+            
+            if a_exists and ptr_exists:
+                self.o_logger.info(f"Both A and PTR records already exist for {container_name} ({ip_address})")
+                return True
+            
+            success_forward = True
+            success_reverse = True
+            
+            # Add A record if it doesn't exist
+            if not a_exists:
+                self.o_logger.info(f"Adding A record for {container_name}")
+                success_forward = self.add_container_to_forward_zone_via_nsupdate(container_name, ip_address)
+            else:
+                self.o_logger.debug(f"A record already exists for {container_name}, skipping")
+            
+            # Add PTR record if it doesn't exist
+            if not ptr_exists:
+                self.o_logger.info(f"Adding PTR record for {container_name}")
+                success_reverse = self.add_container_to_reverse_zone_via_nsupdate(container_name, ip_address)
+            else:
+                self.o_logger.debug(f"PTR record already exists for {container_name}, skipping")
             
             if success_forward and success_reverse:
-                self.o_logger.info(f"Successfully added {container_name} to both forward and reverse DNS")
+                self.o_logger.info(f"Successfully added {container_name} to DNS (A: {'added' if not a_exists else 'existed'}, PTR: {'added' if not ptr_exists else 'existed'})")
                 return True
             elif success_forward:
                 self.o_logger.warning(f"Added {container_name} to forward DNS only (reverse failed)")
@@ -846,6 +988,7 @@ def main():
     parser.add_argument('--status', action='store_true', help='Show DNS management configuration and mode')
     parser.add_argument('--add-container', help='Add specific container to both forward and reverse DNS via nsupdate (format: container_name)')
     parser.add_argument('--remove-container', help='Remove specific container from both forward and reverse DNS via nsupdate (format: container_name)')
+    parser.add_argument('--check-container', help='Check if DNS records exist for specific container (format: container_name)')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     
     args = parser.parse_args()
@@ -937,6 +1080,27 @@ def main():
             print(f"Container '{container_name}' not found or has no IP - attempting removal anyway...")
             success = updater.remove_container_from_forward_zone_via_nsupdate(container_name)
             print("Container removed from forward DNS" if success else "Failed to remove container")
+    
+    elif args.check_container:
+        container_name = args.check_container
+        container_ip = updater.get_container_ip(container_name)
+        if container_ip:
+            print(f"Checking DNS records for {container_name} ({container_ip})...")
+            a_exists, ptr_exists = updater.check_dns_record_exists(container_name, container_ip)
+            
+            print(f"\n=== DNS Record Status for {container_name} ===")
+            print(f"Container IP: {container_ip}")
+            print(f"A Record (Forward): {'✓ EXISTS' if a_exists else '✗ MISSING'}")
+            print(f"PTR Record (Reverse): {'✓ EXISTS' if ptr_exists else '✗ MISSING'}")
+            
+            if a_exists and ptr_exists:
+                print("Status: Complete DNS configuration ✓")
+            elif a_exists or ptr_exists:
+                print("Status: Partial DNS configuration (some records missing)")
+            else:
+                print("Status: No DNS records found")
+        else:
+            print(f"Container '{container_name}' not found or has no IP")
     
     else:
         parser.print_help()
