@@ -16,6 +16,16 @@ dns:
     reverse_network: "172.0.0"  # Network for reverse DNS (e.g., 172.x.x.x networks)
     bind_container_name: "bind9"  # Name of the BIND container
     reload_command: "rndc reload"  # Command to reload BIND configuration
+    server_ip: "172.18.0.2"  # IP address of the DNS server (replace with your BIND container IP)
+    infradmin_zone_path: "/shared/bind/zones"  # Path inside infradmin container (shared volume)
+    
+    # RNDC key configuration for secure DNS updates
+    rndc_key:
+      key_file: "/shared/bind/rndc.key"  # Path to RNDC key file inside infradmin container
+      # Alternative: specify key details directly (if not using key file)
+      # name: "rndc-key"
+      # algorithm: "hmac-sha256" 
+      # secret: "your-base64-encoded-secret"
     
     # DHCP integration settings
     dhcp_managed: true  # Set to true if ISC DHCP server manages forward zone via RNDC
