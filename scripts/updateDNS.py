@@ -114,31 +114,23 @@ class DNSUpdater:
         
         return container_ips
     
-    def add_container_to_forward_zone_via_rndc(self, container_name: str, ip_address: str) -> bool:
-        """Add a container A record to forward zone via RNDC dynamic update"""
+    def add_container_to_forward_zone_via_nsupdate(self, container_name: str, ip_address: str) -> bool:
+        """Add a container A record to forward zone via nsupdate dynamic update"""
         try:
             domain = self.config['dns']['domain']
             ttl = self.config['dns'].get('ttl', 300)
             
-            # Try to use rndc/nsupdate from infradmin container
-            # This requires bind9-utils to be installed in the infradmin container
-            
-            # Method 1: Use nsupdate directly (if available)
+            # Use nsupdate for dynamic DNS updates
             if self._try_nsupdate_add(container_name, domain, ttl, ip_address):
                 return True
             
-            # Method 2: Use rndc commands (if available) 
-            if self._try_rndc_add(container_name, domain, ttl, ip_address):
-                return True
-            
-            # Method 3: Fallback to logging
-            self.o_logger.info(f"Would add A record: {container_name}.{domain}. {ttl} A {ip_address}")
-            self.o_logger.warning("DNS utilities not available - install bind9-utils in infradmin container")
-            self.o_logger.info("Run: apt-get update && apt-get install -y bind9-utils")
-            return True  # Return True for now to indicate intent was processed
+            # Fallback to logging if nsupdate fails
+            self.o_logger.error(f"Failed to add A record: {container_name}.{domain}. {ttl} A {ip_address}")
+            self.o_logger.error("nsupdate failed - check DNS server configuration and key authentication")
+            return False
                 
         except Exception as e:
-            self.o_logger.error(f"Error in add_container_to_forward_zone_via_rndc: {e}")
+            self.o_logger.error(f"Error in add_container_to_forward_zone_via_nsupdate: {e}")
             return False
     
     def _try_nsupdate_add(self, container_name: str, domain: str, ttl: int, ip_address: str) -> bool:
@@ -196,70 +188,24 @@ send
         except Exception as e:
             self.o_logger.debug(f"nsupdate error: {e}")
             return False
+
     
-    def _try_rndc_add(self, container_name: str, domain: str, ttl: int, ip_address: str) -> bool:
-        """Try to add DNS record using rndc commands"""
-        try:
-            import subprocess
-            
-            # Get DNS server IP and key configuration
-            bind_config = self.config.get('dns', {}).get('bind', {})
-            server_ip = bind_config.get('server_ip', '127.0.0.1')
-            rndc_key_config = bind_config.get('rndc_key', {})
-            
-            # Build rndc command with key authentication
-            rndc_cmd = ['rndc']
-            
-            # Add key file if configured and exists
-            key_file = rndc_key_config.get('key_file')
-            if key_file and os.path.exists(key_file):
-                rndc_cmd.extend(['-k', key_file])
-            
-            # Add server IP
-            rndc_cmd.extend(['-s', server_ip, 'status'])
-            
-            # Try rndc status first to check connectivity
-            result = subprocess.run(rndc_cmd, capture_output=True, timeout=10)
-            if result.returncode != 0:
-                self.o_logger.debug(f"rndc not accessible on {server_ip}")
-                return False
-            
-            # Note: rndc doesn't directly add individual records like nsupdate
-            # This would require more complex zone management
-            self.o_logger.debug(f"rndc available on {server_ip} but individual record addition not implemented")
-            return False
-            
-        except FileNotFoundError:
-            self.o_logger.debug("rndc not found")
-            return False
-        except Exception as e:
-            self.o_logger.debug(f"rndc error: {e}")
-            return False
-    
-    def remove_container_from_forward_zone_via_rndc(self, container_name: str) -> bool:
-        """Remove a container A record from forward zone via RNDC dynamic update"""
+    def remove_container_from_forward_zone_via_nsupdate(self, container_name: str) -> bool:
+        """Remove a container A record from forward zone via nsupdate dynamic update"""
         try:
             domain = self.config['dns']['domain']
             
-            # Try to use rndc/nsupdate from infradmin container
-            # This requires bind9-utils to be installed in the infradmin container
-            
-            # Method 1: Use nsupdate directly (if available)
+            # Use nsupdate for dynamic DNS updates
             if self._try_nsupdate_remove(container_name, domain):
                 return True
             
-            # Method 2: Use rndc commands (if available) 
-            if self._try_rndc_remove(container_name, domain):
-                return True
-            
-            # Method 3: Fallback to logging
-            self.o_logger.info(f"Would remove A record: {container_name}.{domain}. A")
-            self.o_logger.warning("DNS utilities not available - install bind9-utils in infradmin container")
-            self.o_logger.info("Run: apt-get update && apt-get install -y bind9-utils")
-            return True  # Return True for now to indicate intent was processed
+            # Fallback to logging if nsupdate fails
+            self.o_logger.error(f"Failed to remove A record: {container_name}.{domain}. A")
+            self.o_logger.error("nsupdate failed - check DNS server configuration and key authentication")
+            return False
                 
         except Exception as e:
-            self.o_logger.error(f"Error in remove_container_from_forward_zone_via_rndc: {e}")
+            self.o_logger.error(f"Error in remove_container_from_forward_zone_via_nsupdate: {e}")
             return False
     
     def _try_nsupdate_remove(self, container_name: str, domain: str) -> bool:
@@ -317,45 +263,7 @@ send
         except Exception as e:
             self.o_logger.debug(f"nsupdate error: {e}")
             return False
-    
-    def _try_rndc_remove(self, container_name: str, domain: str) -> bool:
-        """Try to remove DNS record using rndc commands"""
-        try:
-            import subprocess
-            
-            # Get DNS server IP and key configuration
-            bind_config = self.config.get('dns', {}).get('bind', {})
-            server_ip = bind_config.get('server_ip', '127.0.0.1')
-            rndc_key_config = bind_config.get('rndc_key', {})
-            
-            # Build rndc command with key authentication
-            rndc_cmd = ['rndc']
-            
-            # Add key file if configured and exists
-            key_file = rndc_key_config.get('key_file')
-            if key_file and os.path.exists(key_file):
-                rndc_cmd.extend(['-k', key_file])
-            
-            # Add server IP
-            rndc_cmd.extend(['-s', server_ip, 'status'])
-            
-            # Try rndc status first to check connectivity
-            result = subprocess.run(rndc_cmd, capture_output=True, timeout=10)
-            if result.returncode != 0:
-                self.o_logger.debug(f"rndc not accessible on {server_ip}")
-                return False
-            
-            # Note: rndc doesn't directly remove individual records like nsupdate
-            # This would require more complex zone management
-            self.o_logger.debug(f"rndc available on {server_ip} but individual record removal not implemented")
-            return False
-            
-        except FileNotFoundError:
-            self.o_logger.debug("rndc not found")
-            return False
-        except Exception as e:
-            self.o_logger.debug(f"rndc error: {e}")
-            return False
+
     
     def execute_in_bind_container(self, command: str) -> bool:
         """Execute a command in the BIND container"""
@@ -407,10 +315,10 @@ send
             self.o_logger.info(f"Checking {len(container_ips)} containers for missing DNS records...")
             
             for container_name, ip_address in container_ips.items():
-                # Add container via RNDC (RNDC will handle duplicates gracefully)
+                # Add container via nsupdate (nsupdate will handle duplicates gracefully)
                 self.o_logger.info(f"Adding/updating container in DNS: {container_name}.{domain} -> {ip_address}")
                 
-                if self.add_container_to_forward_zone_via_rndc(container_name, ip_address):
+                if self.add_container_to_forward_zone_via_nsupdate(container_name, ip_address):
                     added_count += 1
                 else:
                     self.o_logger.warning(f"Failed to add/update container {container_name} in DNS")
@@ -699,8 +607,8 @@ def main():
     parser.add_argument('--list', '-l', action='store_true', help='List containers and their IPs')
     parser.add_argument('--list-dns', '-d', action='store_true', help='List all containers that will be added to DNS')
     parser.add_argument('--status', action='store_true', help='Show DNS management configuration and mode')
-    parser.add_argument('--add-container', help='Add specific container to DNS via RNDC (format: container_name)')
-    parser.add_argument('--remove-container', help='Remove specific container from DNS via RNDC (format: container_name)')
+    parser.add_argument('--add-container', help='Add specific container to DNS via nsupdate (format: container_name)')
+    parser.add_argument('--remove-container', help='Remove specific container from DNS via nsupdate (format: container_name)')
     parser.add_argument('--debug', action='store_true', help='Enable debug logging')
     
     args = parser.parse_args()
@@ -753,7 +661,7 @@ def main():
             print("\nMode: DHCP-Safe Mode with Smart Sync (RECOMMENDED)")
             print("- Reverse zone files are updated")
             print("- Forward zone managed by DHCP server")
-            print("- Missing containers automatically added via RNDC")
+            print("- Missing containers automatically added via nsupdate")
             print("- No conflicts with DHCP dynamic updates")
         elif dhcp_managed and not update_forward_zone and not smart_sync:
             print("\nMode: DHCP-Safe Mode (Conservative)")
@@ -773,16 +681,16 @@ def main():
         container_name = args.add_container
         container_ip = updater.get_container_ip(container_name)
         if container_ip:
-            print(f"Adding {container_name} ({container_ip}) to DNS via RNDC...")
-            success = updater.add_container_to_forward_zone_via_rndc(container_name, container_ip)
+            print(f"Adding {container_name} ({container_ip}) to DNS via nsupdate...")
+            success = updater.add_container_to_forward_zone_via_nsupdate(container_name, container_ip)
             print("Container added successfully" if success else "Failed to add container")
         else:
             print(f"Container '{container_name}' not found or has no IP")
     
     elif args.remove_container:
         container_name = args.remove_container
-        print(f"Removing {container_name} from DNS via RNDC...")
-        success = updater.remove_container_from_forward_zone_via_rndc(container_name)
+        print(f"Removing {container_name} from DNS via nsupdate...")
+        success = updater.remove_container_from_forward_zone_via_nsupdate(container_name)
         print("Container removed successfully" if success else "Failed to remove container")
     
     else:

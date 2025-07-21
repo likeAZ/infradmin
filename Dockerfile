@@ -7,6 +7,7 @@ WORKDIR ${APP_DIR}
 RUN apt-get update && apt-get install -y \
     rsync \
     bind9-utils \
+    dnsutils \
     && rm -rf /var/lib/apt/lists/*
 RUN mkdir "conf" "backup"
 COPY requirements.txt ./
