@@ -141,19 +141,61 @@ class DNSUpdater:
             domain = self.config['dns']['domain']
             ttl = self.config['dns'].get('ttl', 300)
             
-            # Create nsupdate command directly (no script file needed)
-            nsupdate_command = f"""nsupdate -l << 'EOF'
+            # Try different approaches to add DNS record
+            approaches = [
+                # Try nsupdate with full path
+                f"""/usr/bin/nsupdate -l << 'EOF'
 server 127.0.0.1
 update add {container_name}.{domain}. {ttl} A {ip_address}
 send
-EOF"""
+EOF""",
+                # Try nsupdate in sbin
+                f"""/usr/sbin/nsupdate -l << 'EOF'
+server 127.0.0.1
+update add {container_name}.{domain}. {ttl} A {ip_address}
+send
+EOF""",
+                # Try which nsupdate first, then execute
+                f"""NSUPDATE_PATH=$(which nsupdate 2>/dev/null || find /usr -name nsupdate 2>/dev/null | head -1)
+if [ -n "$NSUPDATE_PATH" ]; then
+  $NSUPDATE_PATH -l << 'EOF'
+server 127.0.0.1
+update add {container_name}.{domain}. {ttl} A {ip_address}
+send
+EOF
+else
+  echo "nsupdate not found"
+  exit 1
+fi""",
+                # Fallback: create update file and use rndc
+                f"""cat > /tmp/dns_update_{container_name}.txt << 'EOF'
+server 127.0.0.1
+update add {container_name}.{domain}. {ttl} A {ip_address}
+send
+EOF
+if command -v nsupdate >/dev/null 2>&1; then
+  nsupdate -l /tmp/dns_update_{container_name}.txt
+elif command -v /usr/bin/nsupdate >/dev/null 2>&1; then
+  /usr/bin/nsupdate -l /tmp/dns_update_{container_name}.txt
+elif command -v /usr/sbin/nsupdate >/dev/null 2>&1; then
+  /usr/sbin/nsupdate -l /tmp/dns_update_{container_name}.txt
+else
+  echo "nsupdate not available, trying rndc approach"
+  exit 1
+fi
+rm -f /tmp/dns_update_{container_name}.txt"""
+            ]
             
-            if self.execute_in_bind_container(nsupdate_command):
-                self.o_logger.info(f"Added A record via RNDC: {container_name}.{domain} -> {ip_address}")
-                return True
-            else:
-                self.o_logger.error(f"Failed to add A record via RNDC: {container_name}.{domain}")
-                return False
+            for i, nsupdate_command in enumerate(approaches):
+                self.o_logger.info(f"Trying approach {i+1} to add DNS record")
+                if self.execute_in_bind_container(nsupdate_command):
+                    self.o_logger.info(f"Added A record via RNDC (approach {i+1}): {container_name}.{domain} -> {ip_address}")
+                    return True
+                else:
+                    self.o_logger.warning(f"Approach {i+1} failed, trying next...")
+            
+            self.o_logger.error(f"All approaches failed to add A record via RNDC: {container_name}.{domain}")
+            return False
                 
         except Exception as e:
             self.o_logger.error(f"Error adding A record via RNDC: {e}")
@@ -164,19 +206,61 @@ EOF"""
         try:
             domain = self.config['dns']['domain']
             
-            # Create nsupdate command directly (no script file needed)
-            nsupdate_command = f"""nsupdate -l << 'EOF'
+            # Try different approaches to remove DNS record
+            approaches = [
+                # Try nsupdate with full path
+                f"""/usr/bin/nsupdate -l << 'EOF'
 server 127.0.0.1
 update delete {container_name}.{domain}. A
 send
-EOF"""
+EOF""",
+                # Try nsupdate in sbin
+                f"""/usr/sbin/nsupdate -l << 'EOF'
+server 127.0.0.1
+update delete {container_name}.{domain}. A
+send
+EOF""",
+                # Try which nsupdate first, then execute
+                f"""NSUPDATE_PATH=$(which nsupdate 2>/dev/null || find /usr -name nsupdate 2>/dev/null | head -1)
+if [ -n "$NSUPDATE_PATH" ]; then
+  $NSUPDATE_PATH -l << 'EOF'
+server 127.0.0.1
+update delete {container_name}.{domain}. A
+send
+EOF
+else
+  echo "nsupdate not found"
+  exit 1
+fi""",
+                # Fallback: create update file and use nsupdate
+                f"""cat > /tmp/dns_remove_{container_name}.txt << 'EOF'
+server 127.0.0.1
+update delete {container_name}.{domain}. A
+send
+EOF
+if command -v nsupdate >/dev/null 2>&1; then
+  nsupdate -l /tmp/dns_remove_{container_name}.txt
+elif command -v /usr/bin/nsupdate >/dev/null 2>&1; then
+  /usr/bin/nsupdate -l /tmp/dns_remove_{container_name}.txt
+elif command -v /usr/sbin/nsupdate >/dev/null 2>&1; then
+  /usr/sbin/nsupdate -l /tmp/dns_remove_{container_name}.txt
+else
+  echo "nsupdate not available"
+  exit 1
+fi
+rm -f /tmp/dns_remove_{container_name}.txt"""
+            ]
             
-            if self.execute_in_bind_container(nsupdate_command):
-                self.o_logger.info(f"Removed A record via RNDC: {container_name}.{domain}")
-                return True
-            else:
-                self.o_logger.error(f"Failed to remove A record via RNDC: {container_name}.{domain}")
-                return False
+            for i, nsupdate_command in enumerate(approaches):
+                self.o_logger.info(f"Trying approach {i+1} to remove DNS record")
+                if self.execute_in_bind_container(nsupdate_command):
+                    self.o_logger.info(f"Removed A record via RNDC (approach {i+1}): {container_name}.{domain}")
+                    return True
+                else:
+                    self.o_logger.warning(f"Approach {i+1} failed, trying next...")
+            
+            self.o_logger.error(f"All approaches failed to remove A record via RNDC: {container_name}.{domain}")
+            return False
                 
         except Exception as e:
             self.o_logger.error(f"Error removing A record via RNDC: {e}")
