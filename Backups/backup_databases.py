@@ -67,22 +67,51 @@ class DatabaseBackup:
             else:
                 self.o_logger.info(f"Directory {self.map_volume_path(s_backup_path_host_side)} does not exist")
             
-            # Put Nextcloud in maintenance mode if configured
-            if 'nextcloud_container_name' in self.d_yaml_databases[s_database_container_name] and self.o_docker.is_container_exist(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']):
-                self.o_logger.info(f"Putting {self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']} in maintenance mode")
-                s_nextcloud_container_name = self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']
-                self.o_docker.exec_command(self.o_docker.from_name_to_id(s_nextcloud_container_name), "php occ maintenance:mode --on", "www-data")
+            app_entry = self.d_yaml_databases.get(s_database_container_name, {}).get('app')
+            
+            # Ensure app_entry is a list, even if it's a single string
+            app_names = app_entry if isinstance(app_entry, list) else [app_entry]
+
+            previous_states = {}
+
+            for app_name in app_names:
+                if not app_name:
+                    continue  # skip None or empty values
+                
+                # Stopping App before backuping databases
+                if self.o_docker.is_container_exist(app_name):
+                    if app_name == 'nextcloud':
+                        self.o_logger.info(f"Putting {app_name} in maintenance mode")
+                        self.o_docker.exec_command(self.o_docker.from_name_to_id(app_name), "php occ maintenance:mode --on", "www-data")
+                    else:
+                        state = self.o_docker.get_current_container_state(app_name)
+                        previous_states[app_name] = state
+                        if state == 'running':
+                            self.o_logger.info(f"Stopping app container: {app_name}")
+                            self.o_docker.stop_container(app_name)
+
+
             
             s_type = self.o_docker.get_database_type(s_database_container_name)
             self.o_logger.info(f"Backing up {s_database_container_name} of type {s_type}")
             
             self._backup_database_by_type(s_database_container_name, s_type, s_backup_path_container_side, s_backup_path_host_side)
 
-        # Disable maintenance mode for all Nextcloud containers
-        for s_database_container_name in l_databases_container_name:
-            if 'nextcloud_container_name' in self.d_yaml_databases[s_database_container_name] and self.o_docker.is_container_exist(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']):
-                self.o_logger.info(f"Disabling maintenance mode for {self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']}")
-                self.o_docker.exec_command(self.o_docker.from_name_to_id(self.d_yaml_databases[s_database_container_name]['nextcloud_container_name']), "php occ maintenance:mode --off", "www-data")
+            for app_name in app_names:
+                if not app_name:
+                    continue  # skip None or empty values
+
+                if self.o_docker.is_container_exist(app_name):
+                    previous_state = previous_states.get(app_name)
+
+                    if app_name == 'nextcloud':
+                        self.o_logger.info(f"Disabling maintenance mode for {app_name}")
+                        self.o_docker.exec_command(self.o_docker.from_name_to_id(app_name), "php occ maintenance:mode --off", "www-data")
+                    else:
+                        if previous_state == 'running':
+                            self.o_logger.info(f"Starting back app container: {app_name}")
+                            self.o_docker.start_container(app_name)
+
 
     def _backup_database_by_type(self, s_database_container_name: str, s_type: str, s_backup_path_container_side: str, s_backup_path_host_side: str):
         """

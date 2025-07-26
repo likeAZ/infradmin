@@ -1,6 +1,7 @@
 from os import environ
 import docker
 import common.infradmin_logs
+import re
 import common.traefik_management
 
 class Docker:
@@ -106,7 +107,12 @@ class Docker:
         return self.o_docker.containers.list()
 
     def list_stopped_and_running_containers(self):
-        return self.o_docker.containers.list(all=True)
+        list_all_containers = self.o_docker.containers.list(all=True)
+        filtered_containers = []
+        for container in list_all_containers:
+            if not re.match(r'docker-.*-run-.*', container.name):
+                filtered_containers.append(container)
+        return filtered_containers
 
     def from_id_to_name(self, s_id):
         o_container = self.o_docker.containers.get(s_id)
